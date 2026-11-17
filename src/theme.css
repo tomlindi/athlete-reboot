@@ -132,7 +132,32 @@ button {
   outline-offset: 2px;
 }
 
-/* ---------- Grund mit Farbschimmern ---------- */
+/* ---------- Grund mit Farbschimmern ----------
+   Vier Varianten über data-bg am <html>-Element (Auswahl später in den Einstellungen):
+     ruhig      = kein Schimmer (Standard, Toms Wahl)
+     blau-lila  = Blau oben links, Lila rechts
+     logo       = Himbeer oben links, Lila unten rechts (wie das Logo)
+     hauch      = Blau oben links, leiser Himbeer-Schimmer unten rechts
+*/
+
+:root {
+  --s1: var(--accent);
+  --s2: var(--ziele);
+  --s2-strength: 1;
+  --s2-top: 25vh;
+}
+:root[data-bg='logo'] {
+  --s1: var(--fitness);
+  --s2-top: 50vh;
+}
+:root[data-bg='hauch'] {
+  --s2: var(--fitness);
+  --s2-strength: 0.55;
+  --s2-top: 50vh;
+}
+:root[data-bg='ruhig'] .backdrop {
+  display: none;
+}
 
 .backdrop {
   position: fixed;
@@ -152,32 +177,33 @@ button {
   filter: blur(40px);
 }
 
-/* Akzent oben links */
+/* Erster Schimmer oben links */
 .backdrop::before {
   width: 120vw;
   height: 120vw;
   top: -45vw;
   left: -40vw;
-  background: radial-gradient(closest-side, var(--accent), transparent);
+  background: radial-gradient(closest-side, var(--s1), transparent);
 }
 
-/* Lila rechts */
+/* Zweiter Schimmer rechts */
 .backdrop::after {
   width: 110vw;
   height: 110vw;
-  top: 25vh;
+  top: var(--s2-top);
   right: -55vw;
-  background: radial-gradient(closest-side, var(--ziele), transparent);
+  opacity: calc(var(--shimmer-opacity) * var(--s2-strength));
+  background: radial-gradient(closest-side, var(--s2), transparent);
 }
 
-/* Zweiter, schwächerer Akzent unten */
+/* Schwächere Wiederholung des ersten Schimmers unten */
 .backdrop span {
   width: 100vw;
   height: 100vw;
   bottom: -50vw;
   left: -20vw;
   opacity: calc(var(--shimmer-opacity) * 0.7);
-  background: radial-gradient(closest-side, var(--accent), transparent);
+  background: radial-gradient(closest-side, var(--s1), transparent);
 }
 
 /* ---------- Glas ---------- */
