@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CalendarDays, Dumbbell, ListChecks, Settings, TrendingUp, type LucideIcon } from 'lucide-react'
 import { HistoryTab } from './screens/HistoryTab'
 import { PlansTab } from './screens/PlansTab'
@@ -6,6 +6,8 @@ import { SettingsSheet } from './screens/SettingsSheet'
 import { TrainingStart } from './screens/TrainingTab'
 import { WorkoutScreen } from './screens/WorkoutScreen'
 import { StoreProvider, useStore } from './store'
+import { playRestEnd } from './sound'
+import { stopRest } from '../core/workout'
 
 type TabId = 'training' | 'plans' | 'history' | 'progress'
 
@@ -26,8 +28,45 @@ export default function App() {
   )
 }
 
+/**
+ * Beendet die Pause, wenn die Zeit um ist, und spielt einmal den Ton.
+ * Läuft unabhängig vom offenen Tab. War die App im Hintergrund, wird die Pause still beendet.
+ */
+function useRestEnd() {
+  const { active, updateActive, data } = useStore()
+  const endsAt = active?.rest?.endsAt
+  const sound = data.settings.restSound
+  const played = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (!endsAt) return
+    const fire = () => {
+      if (played.current === endsAt) return
+      played.current = endsAt
+      const late = Date.now() - endsAt > 5000
+      if (sound && !late && document.visibilityState === 'visible') playRestEnd()
+      updateActive((w) => (w.rest?.endsAt === endsAt ? stopRest(w) : w))
+    }
+    const wait = endsAt - Date.now()
+    if (wait <= 0) {
+      fire()
+      return
+    }
+    const id = setTimeout(fire, wait)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && Date.now() >= endsAt) fire()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearTimeout(id)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [endsAt, sound, updateActive])
+}
+
 function Shell() {
   const { active, notice, dismissNotice } = useStore()
+  useRestEnd()
   const [tab, setTab] = useState<TabId>('training')
   const [settings, setSettings] = useState(false)
   const current = TABS.find((t) => t.id === tab)!

@@ -72,6 +72,52 @@ function findSet(w: Workout, entryId: string, setId: string): SetEntry | undefin
   return w.exercises.find((e) => e.id === entryId)?.sets.find((s) => s.id === setId)
 }
 
+// ---------- Pausentimer ----------
+
+/** Startet eine Pause von `sec` Sekunden ab jetzt. Eine laufende Pause wird ersetzt. */
+export function startRest(w: Workout, sec: number, now = Date.now()): Workout {
+  return { ...w, rest: { endsAt: now + sec * 1000, total: sec } }
+}
+
+/** Verlängert die laufende Pause, z. B. um 15 Sekunden. */
+export function extendRest(w: Workout, sec: number, now = Date.now()): Workout {
+  if (!w.rest) return w
+  const endsAt = Math.max(w.rest.endsAt, now) + sec * 1000
+  return { ...w, rest: { endsAt, total: w.rest.total + sec } }
+}
+
+export function stopRest(w: Workout): Workout {
+  if (!w.rest) return w
+  const { rest: _rest, ...rest } = w
+  return rest
+}
+
+/** Verbleibende Pause in Sekunden (aufgerundet), 0 wenn vorbei oder keine Pause läuft. */
+export function restRemaining(w: Workout, now = Date.now()): number {
+  return w.rest ? Math.max(0, Math.ceil((w.rest.endsAt - now) / 1000)) : 0
+}
+
+/**
+ * Haken setzen. Wird ein Satz dadurch erledigt, startet die Pause:
+ * mit der Pausenzeit aus dem Plan, sonst mit der Standard-Pause aus den Einstellungen.
+ */
+export function completeSet(w: Workout, entryId: string, setId: string, defaultRestSec: number, now = Date.now()): Workout {
+  const before = findSet(w, entryId, setId)
+  const next = toggleDone(w, entryId, setId)
+  if (!before || before.done) return next
+  const target = w.exercises.find((e) => e.id === entryId)?.target
+  return startRest(next, target?.restSec ?? defaultRestSec, now)
+}
+
+/** Muskelversagen markieren. Wird der Satz dadurch erst erledigt, startet ebenfalls die Pause. */
+export function failSet(w: Workout, entryId: string, setId: string, defaultRestSec: number, now = Date.now()): Workout {
+  const before = findSet(w, entryId, setId)
+  const next = toggleFailure(w, entryId, setId)
+  if (!before || before.done || before.failure) return next
+  const target = w.exercises.find((e) => e.id === entryId)?.target
+  return startRest(next, target?.restSec ?? defaultRestSec, now)
+}
+
 /** Erledigte Sätze und Volumen (kg × Wdh) eines Trainings. */
 export function summarize(w: Workout): { sets: number; volume: number; exercises: number } {
   let sets = 0
@@ -91,7 +137,7 @@ export function finishWorkout(w: Workout, rating: Workout['rating'], now = Date.
   const exercises = w.exercises
     .map((e) => ({ ...e, sets: e.sets.filter((s) => s.done) }))
     .filter((e) => e.sets.length > 0)
-  return { ...w, exercises, rating, endedAt: now }
+  return { ...stopRest(w), exercises, rating, endedAt: now }
 }
 
 /**

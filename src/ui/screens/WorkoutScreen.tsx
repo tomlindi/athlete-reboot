@@ -5,6 +5,11 @@ import { formatRest, formatTarget, goalState, suggestRating } from '../../core/p
 import {
   addExercise,
   addSet,
+  completeSet,
+  extendRest,
+  failSet,
+  restRemaining,
+  stopRest,
   formatNumber,
   formatSet,
   parseNumber,
@@ -12,14 +17,13 @@ import {
   removeExercise,
   removeSet,
   summarize,
-  toggleDone,
-  toggleFailure,
   updateSet,
 } from '../../core/workout'
 import type { ExerciseEntry, Rating, SetEntry, Workout } from '../../core/types'
 import { Sheet } from '../components/Sheet'
 import { SwipeRow } from '../components/SwipeRow'
 import { useStore } from '../store'
+import { unlockSound } from '../sound'
 import { ExercisePicker } from './ExercisePicker'
 
 function useNow(intervalMs = 1000) {
@@ -35,7 +39,8 @@ export function WorkoutScreen({ workout }: { workout: Workout }) {
   const { updateActive, data } = useStore()
   const [picking, setPicking] = useState(false)
   const [finishing, setFinishing] = useState(false)
-  const now = useNow()
+  // Während einer Pause öfter aktualisieren, damit der Balken flüssig läuft
+  const now = useNow(workout.rest ? 250 : 1000)
 
   return (
     <>
@@ -47,6 +52,7 @@ export function WorkoutScreen({ workout }: { workout: Workout }) {
         <button className="button primary small" onClick={() => setFinishing(true)}>
           Beenden
         </button>
+        <RestBar workout={workout} now={now} />
       </header>
 
       <main className="screen workout-body">
@@ -162,14 +168,18 @@ function SetRow({
   /** Oberes Ende des Wiederholungsbereichs geschafft */
   topReached: boolean
 }) {
-  const { updateActive } = useStore()
+  const { updateActive, data } = useStore()
   const label = `${exerciseName}, Satz ${index + 1}`
+  const restSec = data.settings.defaultRestSec
 
   return (
     <SwipeRow
       className={set.failure ? 'is-failure' : ''}
       swipeRightLabel={set.failure ? 'Kein Versagen' : 'Muskelversagen'}
-      onSwipeRight={() => updateActive((w) => toggleFailure(w, entryId, set.id))}
+      onSwipeRight={() => {
+        unlockSound()
+        updateActive((w) => failSet(w, entryId, set.id, restSec))
+      }}
       onDelete={() => updateActive((w) => removeSet(w, entryId, set.id))}
     >
       <div className="set-grid set-row">
@@ -194,7 +204,10 @@ function SetRow({
           role="checkbox"
           aria-checked={set.done}
           aria-label={`${label} erledigt`}
-          onClick={() => updateActive((w) => toggleDone(w, entryId, set.id))}
+          onClick={() => {
+            unlockSound()
+            updateActive((w) => completeSet(w, entryId, set.id, restSec))
+          }}
         />
       </div>
     </SwipeRow>
@@ -343,6 +356,29 @@ function FinishSheet({ open, workout, onClose }: { open: boolean; workout: Worko
         </button>
       )}
     </Sheet>
+  )
+}
+
+/** Orange Pausenleiste direkt unter dem Kopfbereich. Nur sichtbar, solange eine Pause läuft. */
+function RestBar({ workout, now }: { workout: Workout; now: number }) {
+  const { updateActive } = useStore()
+  const rest = workout.rest
+  const left = restRemaining(workout, now)
+  if (!rest || left <= 0) return null
+  const progress = Math.min(1, Math.max(0, 1 - (rest.endsAt - now) / (rest.total * 1000)))
+
+  return (
+    <div className="rest-bar" role="timer" aria-live="off" aria-label={`Pause, noch ${formatRest(left)}`}>
+      <div className="rest-progress" style={{ transform: `scaleX(${progress})` }} aria-hidden="true" />
+      <span className="rest-label">Pause</span>
+      <span className="rest-time">{formatRest(left)}</span>
+      <button className="rest-button" onClick={() => updateActive((w) => extendRest(w, 15))}>
+        +15 s
+      </button>
+      <button className="rest-button" onClick={() => updateActive(stopRest)}>
+        Überspringen
+      </button>
+    </div>
   )
 }
 

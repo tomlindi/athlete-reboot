@@ -89,6 +89,14 @@ export interface Workout {
   rating?: Rating
   exercises: ExerciseEntry[]
   planId?: string
+  /** Laufende Pause. Gespeichert als Endzeitpunkt, damit sie App-Wechsel und Neustart übersteht. */
+  rest?: RestTimer
+}
+
+export interface RestTimer {
+  endsAt: number
+  /** Gesamtlänge in Sekunden, für den Fortschrittsbalken */
+  total: number
 }
 
 export interface RestDay {
@@ -100,9 +108,13 @@ export type Background = 'ruhig' | 'blau-lila' | 'logo' | 'hauch'
 
 export interface Settings {
   background: Background
+  /** Pause nach einem Satz, wenn die Übung keine Plan-Vorgabe hat */
+  defaultRestSec: number
+  /** Kurzer Ton, wenn die Pause vorbei ist */
+  restSound: boolean
 }
 
-export const DEFAULT_SETTINGS: Settings = { background: 'ruhig' }
+export const DEFAULT_SETTINGS: Settings = { background: 'ruhig', defaultRestSec: 120, restSound: true }
 
 export interface Backup {
   app: 'athlete-reboot'

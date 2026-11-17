@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { backupFileName, BackupError, parseBackup } from '../../core/backup'
 import { LifeDashboardImportError } from '../../core/lifeDashboard'
+import { formatRest, REST_OPTIONS } from '../../core/plans'
 import type { Background, Backup } from '../../core/types'
 import { Sheet } from '../components/Sheet'
 import { saveJsonFile } from '../../storage/files'
@@ -45,7 +46,7 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
 }
 
 function MainPage({ onExercises }: { onExercises: () => void }) {
-  const { data, setBackground } = useStore()
+  const { data, setBackground, updateSettings } = useStore()
   const visibleCount = data.exercises.filter((e) => !e.hidden).length
 
   return (
@@ -76,6 +77,39 @@ function MainPage({ onExercises }: { onExercises: () => void }) {
       <section className="list-section">
         <h3 className="list-heading">Training</h3>
         <ul className="list inner">
+          <li className="list-row static">
+            <label className="row-main" htmlFor="default-rest">
+              Standard-Pause
+              <span className="row-sub">Für Übungen ohne Plan-Vorgabe</span>
+            </label>
+            <select
+              id="default-rest"
+              className="rest-select compact"
+              value={data.settings.defaultRestSec}
+              onChange={(e) => updateSettings({ defaultRestSec: Number(e.target.value) })}
+            >
+              {REST_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {formatRest(s)}
+                </option>
+              ))}
+            </select>
+          </li>
+          <li className="list-row static">
+            <label className="row-main" htmlFor="rest-sound">
+              Ton am Pausenende
+              <span className="row-sub">Nur solange die App geöffnet ist</span>
+            </label>
+            <span className="switch">
+              <input
+                type="checkbox"
+                id="rest-sound"
+                checked={data.settings.restSound}
+                onChange={(e) => updateSettings({ restSound: e.target.checked })}
+              />
+              <span className="switch-track" aria-hidden="true" />
+            </span>
+          </li>
           <li>
             <button className="list-row" onClick={onExercises}>
               <span className="row-main">Übungen</span>

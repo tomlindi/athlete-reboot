@@ -9,7 +9,7 @@ describe('Backup', () => {
       workouts: [],
       restDays: [{ date: '2026-11-17' }],
       plans: [],
-      settings: { background: 'logo' },
+      settings: { background: 'logo', defaultRestSec: 90, restSound: false },
     })
     const restored = parseBackup(JSON.stringify(backup))
     expect(restored.exercises).toHaveLength(2)

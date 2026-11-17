@@ -253,7 +253,8 @@ button {
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 0 4px;
+  /* Abstand unter der Statusleiste wie bei iPhone-Apps mit großem Titel (Toms Wunsch: Datum tiefer) */
+  padding: 34px 0 4px;
 }
 
 /* Datum über dem Titel: kräftiger und deckend, damit es auf dem iPhone scharf wirkt */

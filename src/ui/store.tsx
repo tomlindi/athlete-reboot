@@ -4,7 +4,7 @@ import { newId } from '../core/ids'
 import { mergeLifeDashboard, parseLifeDashboardExport, type ImportResult } from '../core/lifeDashboard'
 import { workoutFromPlan } from '../core/plans'
 import { createWorkout, finishWorkout } from '../core/workout'
-import type { Background, Backup, Exercise, MuscleGroup, Plan, Rating, Workout } from '../core/types'
+import type { Background, Backup, Exercise, MuscleGroup, Plan, Rating, Settings, Workout } from '../core/types'
 import * as db from '../storage/db'
 
 // Zentraler Zustand der App. Jede Änderung wird sofort auf dem Gerät gespeichert,
@@ -29,6 +29,7 @@ interface Store {
   addExercise: (name: string, group: MuscleGroup) => Exercise
   setExerciseHidden: (id: string, hidden: boolean) => void
   setBackground: (bg: Background) => void
+  updateSettings: (patch: Partial<Settings>) => void
   exportBackup: () => Backup
   importBackup: (text: string) => Promise<Backup>
 }
@@ -174,6 +175,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const next = { ...e, hidden }
         apply({ ...d, exercises: d.exercises.map((x) => (x.id === id ? next : x)) })
         db.saveExercise(next).catch(report)
+      },
+
+      updateSettings(patch) {
+        const d = current()
+        const settings = { ...d.settings, ...patch }
+        apply({ ...d, settings })
+        db.saveSettings(settings).catch(report)
       },
 
       setBackground(background) {
