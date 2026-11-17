@@ -124,7 +124,7 @@ function MainPage({ onExercises }: { onExercises: () => void }) {
 
       <BackupSection />
 
-      <p className="hint center">Athlete Reboot · Version 0.3</p>
+      <p className="hint center">Athlete Reboot · Version {__APP_VERSION__.replace(/\.0$/, '')}</p>
     </>
   )
 }
