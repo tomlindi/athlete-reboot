@@ -4,3 +4,6 @@ dev-dist
 *.local
 .DS_Store
 *.tsbuildinfo
+
+# Toms eigene Entwürfe und Unterlagen nicht veröffentlichen
+*.pdf

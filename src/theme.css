@@ -3,7 +3,7 @@
   Ruhiger Grund mit weichen Farbschimmern, darüber halbtransparente Glas-Karten.
   Hell und dunkel teilen Abstände, Radien und Komponenten; nur die Farben wechseln.
 
-  Bereichsfarbe (Akzent) für den Gym-Teil: Fitness/Himbeer.
+  Bereichsfarbe (Akzent) für den Gym-Teil: Apple-Blau (Toms Wahl, statt Himbeer).
   Feste Statusfarben bleiben:
     grün   = geschafft / Muskelversagen / Bestwert
     orange = Pausentimer
@@ -32,6 +32,7 @@
   --text-mix: black 20%;
 
   /* Bereichsfarben (hell) */
+  --blau: #007aff;
   --fitness: #ff2d55;
   --koerper: #30b0c7;
   --schlaf: #5856d6;
@@ -45,7 +46,7 @@
   --indigo: #5856d6;
 
   /* Aktiver Bereich: Gym */
-  --accent: var(--fitness);
+  --accent: var(--blau);
 
   /* ---------- Form und Schrift ---------- */
   --font: -apple-system, BlinkMacSystemFont, 'SF Pro', 'Inter Variable', sans-serif;
@@ -77,6 +78,7 @@
     /* Akzent als Text: 15 % Weiß beimischen */
     --text-mix: white 15%;
 
+    --blau: #0a84ff;
     --fitness: #ff375f;
     --koerper: #40c8e0;
     --schlaf: #7d7bff;
