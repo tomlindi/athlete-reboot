@@ -1015,3 +1015,178 @@ body.sheet-open {
   border-radius: 50%;
   background: var(--accent);
 }
+
+/* ---------- Pläne (Schritt 7) ---------- */
+
+.list-row:disabled {
+  cursor: default;
+}
+
+.plan-row {
+  display: flex;
+  align-items: center;
+  padding-right: 14px;
+}
+
+.plan-row .list-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.plan-start {
+  flex: none;
+}
+
+.plan-exercise {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--r-inner);
+  background: var(--inner);
+}
+
+.plan-exercise-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.plan-exercise-head .row-main {
+  margin-right: 4px;
+}
+
+.icon-button.small {
+  margin: 0;
+  width: 36px;
+  height: 36px;
+}
+
+.icon-button.small svg {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.icon-button.danger {
+  color: var(--red-text);
+}
+
+.plan-fields {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.plan-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.plan-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--field);
+}
+
+.stepper button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 44px;
+  color: var(--accent-text);
+}
+
+.stepper button:disabled {
+  opacity: 0.3;
+}
+
+.stepper svg {
+  width: 18px;
+  height: 18px;
+}
+
+.stepper-value {
+  min-width: 20px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+}
+
+.rep-input,
+.rest-select {
+  height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.rep-input {
+  width: 44px;
+  padding: 0;
+}
+
+.rest-select {
+  width: 100%;
+  padding: 0 8px;
+}
+
+/* Im Training: Vorgabe und Ziel */
+.exercise-title {
+  min-width: 0;
+  flex: 1;
+}
+
+.exercise-target {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.goal-chip {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--green) 18%, transparent);
+  color: var(--green-text);
+}
+
+/* Oberes Ende des Wiederholungsbereichs geschafft */
+.set-input.top {
+  color: var(--green-text);
+}
+
+/* Kalender: Training ohne Bewertung (z. B. importiert) */
+.calendar-day.done {
+  background: var(--inner);
+  font-weight: 700;
+}

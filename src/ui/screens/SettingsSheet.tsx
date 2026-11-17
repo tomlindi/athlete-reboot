@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { backupFileName, BackupError, parseBackup } from '../../core/backup'
+import { LifeDashboardImportError } from '../../core/lifeDashboard'
 import type { Background, Backup } from '../../core/types'
 import { Sheet } from '../components/Sheet'
 import { saveJsonFile } from '../../storage/files'
@@ -85,9 +86,11 @@ function MainPage({ onExercises }: { onExercises: () => void }) {
         </ul>
       </section>
 
+      <LifeDashboardSection />
+
       <BackupSection />
 
-      <p className="hint center">Athlete Reboot · Version 0.2</p>
+      <p className="hint center">Athlete Reboot · Version 0.3</p>
     </>
   )
 }
@@ -144,6 +147,66 @@ function ExercisesPage() {
         </section>
       ))}
     </>
+  )
+}
+
+function LifeDashboardSection() {
+  const { importLifeDashboard } = useStore()
+  const fileInput = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
+
+  async function onFile(file: File | undefined) {
+    setMessage(null)
+    if (!file) return
+    setBusy(true)
+    try {
+      const r = await importLifeDashboard(await file.text())
+      const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
+      const parts = [
+        n(r.newWorkouts, 'Training', 'Trainings'),
+        n(r.newPlans, 'neuer Plan', 'neue Pläne'),
+        r.newExercises ? n(r.newExercises, 'neue Übung', 'neue Übungen') : '',
+      ].filter(Boolean)
+      const extra = [
+        r.skippedWorkouts ? `${n(r.skippedWorkouts, 'Training war', 'Trainings waren')} schon da.` : '',
+        r.skippedWarmups ? `${n(r.skippedWarmups, 'Aufwärmsatz wurde', 'Aufwärmsätze wurden')} weggelassen.` : '',
+      ].filter(Boolean)
+      setMessage({ kind: 'ok', text: `Übernommen: ${parts.join(', ')}. ${extra.join(' ')}`.trim() })
+    } catch (err) {
+      setMessage({
+        kind: 'error',
+        text: err instanceof LifeDashboardImportError ? err.message : 'Der Import hat nicht geklappt. Deine bisherigen Daten sind unverändert.',
+      })
+    } finally {
+      setBusy(false)
+      if (fileInput.current) fileInput.current.value = ''
+    }
+  }
+
+  return (
+    <section className="list-section">
+      <h3 className="list-heading">Aus Life Dashboard übernehmen</h3>
+      <p className="hint">
+        Im Life Dashboard unter Fitness → Gym die „JSON-Datei“ exportieren und hier auswählen. Pläne und Trainings kommen dazu, nichts wird gelöscht. Doppelte Trainings werden übersprungen.
+      </p>
+      <ul className="list inner">
+        <li>
+          <button className="list-row" disabled={busy} onClick={() => fileInput.current?.click()}>
+            <span className="row-main accent">{busy ? 'Wird übernommen …' : 'Gym-Export auswählen'}</span>
+          </button>
+        </li>
+      </ul>
+      <input
+        ref={fileInput}
+        id="lifedashboard-file"
+        type="file"
+        accept="application/json,.json"
+        hidden
+        onChange={(e) => onFile(e.target.files?.[0])}
+      />
+      {message && <p className={message.kind === 'ok' ? 'ok-text' : 'field-error'}>{message.text}</p>}
+    </section>
   )
 }
 

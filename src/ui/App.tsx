@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CalendarDays, Dumbbell, ListChecks, Settings, TrendingUp, type LucideIcon } from 'lucide-react'
 import { HistoryTab } from './screens/HistoryTab'
+import { PlansTab } from './screens/PlansTab'
 import { SettingsSheet } from './screens/SettingsSheet'
 import { TrainingStart } from './screens/TrainingTab'
 import { WorkoutScreen } from './screens/WorkoutScreen'
@@ -61,11 +62,9 @@ function Shell() {
             </button>
           </header>
 
-          {tab === 'training' && <TrainingStart onOpenHistory={() => setTab('history')} />}
+          {tab === 'training' && <TrainingStart onOpenHistory={() => setTab('history')} onOpenPlans={() => setTab('plans')} />}
           {tab === 'history' && <HistoryTab />}
-          {tab === 'plans' && (
-            <ComingSoon text="Eigene Trainingspläne mit Sätzen, Wiederholungsbereich und Pausenzeit kommen in Schritt 7." />
-          )}
+          {tab === 'plans' && <PlansTab />}
           {tab === 'progress' && (
             <ComingSoon text="Wochenübersicht, Gesamtkraft und Bestwerte kommen in Schritt 9." />
           )}

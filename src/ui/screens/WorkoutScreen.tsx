@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import { formatClock, formatDuration } from '../../core/dates'
+import { formatRest, formatTarget, goalState, suggestRating } from '../../core/plans'
 import {
   addExercise,
   addSet,
@@ -88,11 +89,20 @@ function ExerciseCard({ entry, previous }: { entry: ExerciseEntry; previous: Set
   const { updateActive, exerciseById } = useStore()
   const [menu, setMenu] = useState(false)
   const name = exerciseById.get(entry.exerciseId)?.name ?? 'Unbekannte Übung'
+  const goal = goalState(entry)
 
   return (
     <section className="card glass exercise-card">
       <div className="exercise-head">
-        <h2 className="card-title">{name}</h2>
+        <div className="exercise-title">
+          <h2 className="card-title">{name}</h2>
+          {entry.target && (
+            <p className="exercise-target">
+              Ziel {formatTarget(entry.target)} · Pause {formatRest(entry.target.restSec)}
+            </p>
+          )}
+        </div>
+        {goal === 'reached' && <span className="goal-chip">Ziel geschafft</span>}
         <button className="icon-button" aria-label={`Optionen für ${name}`} aria-expanded={menu} onClick={() => setMenu(!menu)}>
           <MoreHorizontal strokeWidth={2} />
         </button>
@@ -118,7 +128,15 @@ function ExerciseCard({ entry, previous }: { entry: ExerciseEntry; previous: Set
       </div>
 
       {entry.sets.map((set, i) => (
-        <SetRow key={set.id} entryId={entry.id} set={set} index={i} previous={previous[i]} exerciseName={name} />
+        <SetRow
+          key={set.id}
+          entryId={entry.id}
+          set={set}
+          index={i}
+          previous={previous[i]}
+          exerciseName={name}
+          topReached={!!entry.target && set.done && (set.reps ?? 0) >= entry.target.repMax}
+        />
       ))}
 
       <button className="text-button add-set" onClick={() => updateActive((w) => addSet(w, entry.id, previous))}>
@@ -134,12 +152,15 @@ function SetRow({
   index,
   previous,
   exerciseName,
+  topReached,
 }: {
   entryId: string
   set: SetEntry
   index: number
   previous?: SetEntry
   exerciseName: string
+  /** Oberes Ende des Wiederholungsbereichs geschafft */
+  topReached: boolean
 }) {
   const { updateActive } = useStore()
   const label = `${exerciseName}, Satz ${index + 1}`
@@ -163,6 +184,7 @@ function SetRow({
         />
         <NumberInput
           id={`reps-${set.id}`}
+          className={topReached ? 'top' : ''}
           label={`${label}, Wiederholungen`}
           value={set.reps}
           onChange={(reps) => updateActive((w) => updateSet(w, entryId, set.id, { reps }))}
@@ -185,9 +207,11 @@ function NumberInput({
   label,
   value,
   decimal,
+  className = '',
   onChange,
 }: {
   id: string
+  className?: string
   label: string
   value: number | null
   decimal?: boolean
@@ -204,7 +228,7 @@ function NumberInput({
   return (
     <input
       id={id}
-      className="set-input"
+      className={`set-input ${className}`}
       aria-label={label}
       inputMode={decimal ? 'decimal' : 'numeric'}
       enterKeyHint="next"
@@ -229,13 +253,17 @@ function NumberInput({
 
 function FinishSheet({ open, workout, onClose }: { open: boolean; workout: Workout; onClose: () => void }) {
   const { finishActive, discardActive } = useStore()
-  const [rating, setRating] = useState<Rating | null>(null)
+  const suggestion = open ? suggestRating(workout) : null
+  const [chosen, setRating] = useState<Rating | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const summary = summarize(workout)
+  // Ohne eigene Wahl gilt der Vorschlag aus den Planzielen
+  const rating = chosen ?? suggestion?.rating ?? null
   const canSave = summary.sets > 0 && rating !== null
 
   function close() {
     setConfirmDiscard(false)
+    setRating(null)
     onClose()
   }
 
@@ -270,6 +298,11 @@ function FinishSheet({ open, workout, onClose }: { open: boolean; workout: Worko
               Nicht so gut
             </button>
           </div>
+          {suggestion && (
+            <p className="hint">
+              Vorschlag nach deinen Planzielen: {suggestion.hit} von {suggestion.total} Übungen im Zielbereich. Du kannst die Bewertung ändern.
+            </p>
+          )}
           <p className="hint">Nicht abgehakte Sätze werden beim Speichern entfernt.</p>
         </>
       )}

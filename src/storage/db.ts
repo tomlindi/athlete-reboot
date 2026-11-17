@@ -1,6 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 import { mergeDefaultExercises } from '../core/exercises'
-import { DEFAULT_SETTINGS, type Backup, type Exercise, type RestDay, type Settings, type Workout } from '../core/types'
+import { DEFAULT_SETTINGS, type Backup, type Exercise, type Plan, type RestDay, type Settings, type Workout } from '../core/types'
 
 // Speicher-Schicht: alle Daten liegen auf dem Gerät in IndexedDB.
 // Die App spricht nur über diese Funktionen mit dem Speicher, damit er später austauschbar ist.
@@ -10,6 +10,7 @@ interface AthleteDB extends DBSchema {
   workouts: { key: string; value: Workout; indexes: { startedAt: number } }
   restDays: { key: string; value: RestDay }
   settings: { key: string; value: Settings }
+  plans: { key: string; value: Plan }
 }
 
 const DB_NAME = 'athlete-reboot'
@@ -18,13 +19,19 @@ const SETTINGS_KEY = 'app'
 let dbPromise: Promise<IDBPDatabase<AthleteDB>> | null = null
 
 function db() {
-  dbPromise ??= openDB<AthleteDB>(DB_NAME, 1, {
-    upgrade(d) {
-      d.createObjectStore('exercises', { keyPath: 'id' })
-      const w = d.createObjectStore('workouts', { keyPath: 'id' })
-      w.createIndex('startedAt', 'startedAt')
-      d.createObjectStore('restDays', { keyPath: 'date' })
-      d.createObjectStore('settings')
+  // Version 2 (Schritt 7) ergänzt die Pläne. Vorhandene Daten bleiben beim Update erhalten.
+  dbPromise ??= openDB<AthleteDB>(DB_NAME, 2, {
+    upgrade(d, oldVersion) {
+      if (oldVersion < 1) {
+        d.createObjectStore('exercises', { keyPath: 'id' })
+        const w = d.createObjectStore('workouts', { keyPath: 'id' })
+        w.createIndex('startedAt', 'startedAt')
+        d.createObjectStore('restDays', { keyPath: 'date' })
+        d.createObjectStore('settings')
+      }
+      if (oldVersion < 2) {
+        d.createObjectStore('plans', { keyPath: 'id' })
+      }
     },
   })
   return dbPromise
@@ -34,16 +41,18 @@ export interface AppData {
   exercises: Exercise[]
   workouts: Workout[]
   restDays: RestDay[]
+  plans: Plan[]
   settings: Settings
 }
 
 /** Lädt alles beim Start. Fehlende Standard-Übungen werden ergänzt. */
 export async function loadAll(): Promise<AppData> {
   const d = await db()
-  const [storedExercises, workouts, restDays, settings] = await Promise.all([
+  const [storedExercises, workouts, restDays, plans, settings] = await Promise.all([
     d.getAll('exercises'),
     d.getAll('workouts'),
     d.getAll('restDays'),
+    d.getAll('plans'),
     d.get('settings', SETTINGS_KEY),
   ])
   const exercises = mergeDefaultExercises(storedExercises)
@@ -51,7 +60,8 @@ export async function loadAll(): Promise<AppData> {
     const tx = d.transaction('exercises', 'readwrite')
     await Promise.all([...exercises.map((e) => tx.store.put(e)), tx.done])
   }
-  return { exercises, workouts, restDays, settings: { ...DEFAULT_SETTINGS, ...settings } }
+  plans.sort((a, b) => a.order - b.order)
+  return { exercises, workouts, restDays, plans, settings: { ...DEFAULT_SETTINGS, ...settings } }
 }
 
 export async function saveWorkout(w: Workout) {
@@ -64,6 +74,26 @@ export async function deleteWorkout(id: string) {
 
 export async function saveExercise(e: Exercise) {
   await (await db()).put('exercises', e)
+}
+
+export async function savePlan(p: Plan) {
+  await (await db()).put('plans', p)
+}
+
+export async function deletePlan(id: string) {
+  await (await db()).delete('plans', id)
+}
+
+/** Fügt importierte Daten hinzu, ohne Vorhandenes zu löschen. Ganz oder gar nicht. */
+export async function putMany(data: { exercises: Exercise[]; plans: Plan[]; workouts: Workout[] }) {
+  const d = await db()
+  const tx = d.transaction(['exercises', 'plans', 'workouts'], 'readwrite')
+  await Promise.all([
+    ...data.exercises.map((e) => tx.objectStore('exercises').put(e)),
+    ...data.plans.map((p) => tx.objectStore('plans').put(p)),
+    ...data.workouts.map((w) => tx.objectStore('workouts').put(w)),
+    tx.done,
+  ])
 }
 
 export async function setRestDay(date: string, isRest: boolean) {
@@ -79,13 +109,15 @@ export async function saveSettings(s: Settings) {
 /** Ersetzt alle Daten durch ein Backup. Läuft in einer Transaktion: ganz oder gar nicht. */
 export async function replaceAll(b: Backup) {
   const d = await db()
-  const tx = d.transaction(['exercises', 'workouts', 'restDays', 'settings'], 'readwrite')
+  const tx = d.transaction(['exercises', 'workouts', 'restDays', 'plans', 'settings'], 'readwrite')
   await Promise.all([
     tx.objectStore('exercises').clear(),
     tx.objectStore('workouts').clear(),
     tx.objectStore('restDays').clear(),
+    tx.objectStore('plans').clear(),
   ])
   await Promise.all([
+    ...b.plans.map((p) => tx.objectStore('plans').put(p)),
     ...mergeDefaultExercises(b.exercises).map((e) => tx.objectStore('exercises').put(e)),
     ...b.workouts.map((w) => tx.objectStore('workouts').put(w)),
     ...b.restDays.map((r) => tx.objectStore('restDays').put(r)),

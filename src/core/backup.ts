@@ -1,12 +1,22 @@
-import { DEFAULT_SETTINGS, type Backup, type Exercise, type RestDay, type Settings, type Workout } from './types'
+import { DEFAULT_SETTINGS, type Backup, type Exercise, type Plan, type RestDay, type Settings, type Workout } from './types'
 
 export function createBackup(data: {
   exercises: Exercise[]
   workouts: Workout[]
   restDays: RestDay[]
+  plans: Plan[]
   settings: Settings
 }, now = new Date()): Backup {
-  return { app: 'athlete-reboot', version: 1, exportedAt: now.toISOString(), ...data }
+  return {
+    app: 'athlete-reboot',
+    version: 1,
+    exportedAt: now.toISOString(),
+    exercises: data.exercises,
+    workouts: data.workouts,
+    restDays: data.restDays,
+    plans: data.plans,
+    settings: data.settings,
+  }
 }
 
 export class BackupError extends Error {}
@@ -36,6 +46,7 @@ export function parseBackup(text: string): Backup {
     exercises: b.exercises,
     workouts: b.workouts,
     restDays: b.restDays,
+    plans: Array.isArray(b.plans) ? b.plans : [],
     settings: { ...DEFAULT_SETTINGS, ...(b.settings ?? {}) },
   }
 }

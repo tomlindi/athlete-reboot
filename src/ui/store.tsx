@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createBackup, parseBackup } from '../core/backup'
 import { newId } from '../core/ids'
+import { mergeLifeDashboard, parseLifeDashboardExport, type ImportResult } from '../core/lifeDashboard'
+import { workoutFromPlan } from '../core/plans'
 import { createWorkout, finishWorkout } from '../core/workout'
-import type { Background, Backup, Exercise, MuscleGroup, Rating, Workout } from '../core/types'
+import type { Background, Backup, Exercise, MuscleGroup, Plan, Rating, Workout } from '../core/types'
 import * as db from '../storage/db'
 
 // Zentraler Zustand der App. Jede Änderung wird sofort auf dem Gerät gespeichert,
@@ -15,6 +17,10 @@ interface Store {
   notice: string | null
   dismissNotice: () => void
   startWorkout: () => void
+  startPlan: (planId: string) => void
+  savePlan: (plan: Plan) => void
+  deletePlan: (id: string) => void
+  importLifeDashboard: (text: string) => Promise<ImportResult>
   updateActive: (fn: (w: Workout) => Workout) => void
   finishActive: (rating: Rating) => void
   discardActive: () => void
@@ -93,6 +99,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       startWorkout() {
         if (currentActive()) return
         putWorkout(createWorkout())
+      },
+
+      startPlan(planId) {
+        if (currentActive()) return
+        const plan = current().plans.find((p) => p.id === planId)
+        if (plan) putWorkout(workoutFromPlan(plan, current().workouts))
+      },
+
+      savePlan(plan) {
+        const d = current()
+        const exists = d.plans.some((x) => x.id === plan.id)
+        apply({ ...d, plans: exists ? d.plans.map((x) => (x.id === plan.id ? plan : x)) : [...d.plans, plan] })
+        db.savePlan(plan).catch(report)
+      },
+
+      deletePlan(id) {
+        const d = current()
+        apply({ ...d, plans: d.plans.filter((x) => x.id !== id) })
+        db.deletePlan(id).catch(report)
+      },
+
+      async importLifeDashboard(text) {
+        const d = current()
+        const result = mergeLifeDashboard(parseLifeDashboardExport(text), d)
+        await db.putMany(result)
+        apply({ ...d, exercises: result.exercises, plans: result.plans, workouts: result.workouts })
+        return result
       },
 
       updateActive(fn) {

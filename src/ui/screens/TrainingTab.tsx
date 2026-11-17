@@ -2,11 +2,12 @@ import { ChevronRight } from 'lucide-react'
 import { formatDuration } from '../../core/dates'
 import { summarize } from '../../core/workout'
 import { useStore } from '../store'
+import { PlanList } from './PlansTab'
 
 const dayFmt = new Intl.DateTimeFormat('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })
 
 /** Startansicht, wenn kein Training läuft. */
-export function TrainingStart({ onOpenHistory }: { onOpenHistory: () => void }) {
+export function TrainingStart({ onOpenHistory, onOpenPlans }: { onOpenHistory: () => void; onOpenPlans: () => void }) {
   const { data, startWorkout } = useStore()
   const last = data.workouts
     .filter((w) => w.endedAt !== undefined)
@@ -14,8 +15,22 @@ export function TrainingStart({ onOpenHistory }: { onOpenHistory: () => void }) 
 
   return (
     <>
-      <button className="button primary wide large" onClick={startWorkout}>
-        Training starten
+      <section className="list-section">
+        <h3 className="list-heading">Meine Pläne</h3>
+        {data.plans.length > 0 ? (
+          <PlanList showEmptyHint={false} />
+        ) : (
+          <section className="card glass">
+            <p className="card-text">Noch keine Pläne. Lege im Tab „Pläne“ deinen ersten an, dann startest du ihn hier mit einem Tipp.</p>
+            <button className="text-button strong" onClick={onOpenPlans}>
+              Zu den Plänen
+            </button>
+          </section>
+        )}
+      </section>
+
+      <button className="button secondary wide" onClick={startWorkout}>
+        Freies Training starten
       </button>
 
       {last && (
@@ -38,13 +53,6 @@ export function TrainingStart({ onOpenHistory }: { onOpenHistory: () => void }) 
           </ul>
         </section>
       )}
-
-      <section className="list-section">
-        <h3 className="list-heading">Meine Pläne</h3>
-        <section className="card glass">
-          <p className="card-text">Eigene Trainingspläne mit Sätzen, Wiederholungen und Pausenzeit kommen in Schritt 7. Bis dahin startest du ein freies Training.</p>
-        </section>
-      </section>
     </>
   )
 }

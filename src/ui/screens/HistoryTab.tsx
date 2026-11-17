@@ -144,7 +144,9 @@ function HistoryCalendar({ workouts, onOpen }: { workouts: Workout[]; onOpen: (i
           const status = dayWorkouts.length
             ? dayWorkouts.some((w) => w.rating === 'good')
               ? 'good'
-              : 'meh'
+              : dayWorkouts.some((w) => w.rating === 'meh')
+                ? 'meh'
+                : 'done'
             : isRest
               ? 'rest'
               : ''
@@ -153,7 +155,9 @@ function HistoryCalendar({ workouts, onOpen }: { workouts: Workout[]; onOpen: (i
               ? 'gutes Training'
               : status === 'meh'
                 ? 'nicht so gutes Training'
-                : status === 'rest'
+                : status === 'done'
+                  ? 'Training ohne Bewertung'
+                  : status === 'rest'
                   ? 'Rest Day'
                   : isFuture
                     ? ''

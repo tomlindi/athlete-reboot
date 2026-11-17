@@ -1,6 +1,8 @@
 import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 // Fenster, das von unten hochfährt (iOS-Sheet), aus Glas.
+// Wird direkt in <body> gezeichnet, damit es immer über Dock und Kopfbereich liegt.
 
 export function Sheet({
   open,
@@ -29,7 +31,7 @@ export function Sheet({
   }, [open, onClose])
 
   if (!open) return null
-  return (
+  return createPortal(
     <div className="sheet-layer" role="presentation">
       <div className="sheet-dim" onClick={onClose} />
       <section className="sheet glass" role="dialog" aria-modal="true" aria-label={title}>
@@ -44,6 +46,7 @@ export function Sheet({
         </header>
         <div className="sheet-body">{children}</div>
       </section>
-    </div>
+    </div>,
+    document.body,
   )
 }

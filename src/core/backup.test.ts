@@ -8,12 +8,18 @@ describe('Backup', () => {
       exercises: DEFAULT_EXERCISES.slice(0, 2),
       workouts: [],
       restDays: [{ date: '2026-11-17' }],
+      plans: [],
       settings: { background: 'logo' },
     })
     const restored = parseBackup(JSON.stringify(backup))
     expect(restored.exercises).toHaveLength(2)
     expect(restored.restDays).toEqual([{ date: '2026-11-17' }])
     expect(restored.settings.background).toBe('logo')
+  })
+
+  it('ältere Backups ohne Pläne lassen sich laden', () => {
+    const old = '{"app":"athlete-reboot","version":1,"exercises":[],"workouts":[],"restDays":[]}'
+    expect(parseBackup(old).plans).toEqual([])
   })
 
   it('lehnt fremde und kaputte Dateien ab', () => {
