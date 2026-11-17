@@ -1,9 +1,11 @@
 /*
-  Athlete Reboot: Design-Grundlage im Apple-Stil.
-  Farben = Apple-Systemfarben, jeweils hell und dunkel.
-  Feste Bedeutungen (in beiden Modi gleich):
+  Athlete Reboot: Designvariante „Glas“ (nach Toms Life-Dashboard-Vorgabe).
+  Ruhiger Grund mit weichen Farbschimmern, darüber halbtransparente Glas-Karten.
+  Hell und dunkel teilen Abstände, Radien und Komponenten; nur die Farben wechseln.
+
+  Bereichsfarbe (Akzent) für den Gym-Teil: Fitness/Himbeer.
+  Feste Statusfarben bleiben:
     grün   = geschafft / Muskelversagen / Bestwert
-    blau   = normale Buttons und Aktionen
     orange = Pausentimer
     rot    = Knieschmerz über 3/10, Löschen
     indigo = Rest Day / Erholung
@@ -12,49 +14,86 @@
 :root {
   color-scheme: light dark;
 
+  /* ---------- Heller Modus ---------- */
   --bg: #f2f2f7;
-  --card: #ffffff;
-  --label: #000000;
-  --label-secondary: rgba(60, 60, 67, 0.6);
-  --separator: rgba(60, 60, 67, 0.29);
-  /* Tab-Leiste aus mattem Glas, wie die schwebende Leiste in WhatsApp unter iOS 26 */
+  --shimmer-opacity: 0.16;
   --glass: rgba(255, 255, 255, 0.62);
-  --glass-border: rgba(255, 255, 255, 0.7);
-  --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.06);
-  --tab-selected-bg: rgba(0, 0, 0, 0.06);
-  --tab-inactive: rgba(60, 60, 67, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.8);
+  --glass-outline: 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --glass-shadow: 0 8px 28px rgba(20, 20, 40, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --glass-solid: #ffffff;
+  --inner: rgba(0, 0, 0, 0.04);
+  --text: #1c1c1e;
+  --text-secondary: #6e6e73;
+  --separator: rgba(0, 0, 0, 0.08);
+  --focus: #000000;
+  --on-accent: #ffffff;
+  /* Akzent als Text: 20 % Schwarz beimischen, damit er auf hellem Glas lesbar bleibt */
+  --text-mix: black 20%;
 
+  /* Bereichsfarben (hell) */
+  --fitness: #ff2d55;
+  --koerper: #30b0c7;
+  --schlaf: #5856d6;
+  --ernaehrung: #65a30d;
+  --ziele: #af52de;
+
+  /* Statusfarben (hell) */
   --green: #34c759;
-  --blue: #007aff;
   --orange: #ff9500;
   --red: #ff3b30;
   --indigo: #5856d6;
 
-  --radius: 12px;
-  /* iPhone/Mac: echte Apple-Schrift (SF Pro). Andere Geräte: Inter, die SF Pro sehr ähnlich ist. */
-  --font: -apple-system, BlinkMacSystemFont, 'Inter Variable', sans-serif;
-  --tab-bar-height: 62px;
-  --tab-bar-bottom: max(12px, calc(env(safe-area-inset-bottom) - 10px));
+  /* Aktiver Bereich: Gym */
+  --accent: var(--fitness);
+
+  /* ---------- Form und Schrift ---------- */
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro', 'Inter Variable', sans-serif;
+  --r-card: 24px;
+  --r-inner: 16px;
+  --gap: 12px;
+  --pad: 18px;
+  --blur: blur(24px) saturate(180%);
+  --dock-height: 64px;
+  --dock-margin: 12px;
+  --dock-bottom: max(var(--dock-margin), calc(env(safe-area-inset-bottom) - 8px));
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #000000;
-    --card: #1c1c1e;
-    --label: #ffffff;
-    --label-secondary: rgba(235, 235, 245, 0.6);
-    --separator: rgba(84, 84, 88, 0.65);
-    --glass: rgba(37, 37, 40, 0.62);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
-    --tab-selected-bg: rgba(255, 255, 255, 0.12);
-    --tab-inactive: rgba(235, 235, 245, 0.7);
+    --bg: #06070a;
+    --shimmer-opacity: 0.22;
+    --glass: rgba(255, 255, 255, 0.07);
+    --glass-border: rgba(255, 255, 255, 0.14);
+    --glass-outline: 0 0 0 0 transparent;
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    --glass-solid: #1c1c1e;
+    --inner: rgba(255, 255, 255, 0.06);
+    --text: #ffffff;
+    --text-secondary: #a6a6b0;
+    --separator: rgba(255, 255, 255, 0.12);
+    --focus: #ffffff;
+    --on-accent: #000000;
+    /* Akzent als Text: 15 % Weiß beimischen */
+    --text-mix: white 15%;
+
+    --fitness: #ff375f;
+    --koerper: #40c8e0;
+    --schlaf: #7d7bff;
+    --ernaehrung: #a3e635;
+    --ziele: #bf5af2;
 
     --green: #30d158;
-    --blue: #0a84ff;
     --orange: #ff9f0a;
     --red: #ff453a;
-    --indigo: #5e5ce6;
+    --indigo: #7d7bff;
+  }
+}
+
+@media (min-width: 720px) {
+  :root {
+    --gap: 16px;
+    --pad: 20px;
   }
 }
 
@@ -67,12 +106,14 @@ html,
 body {
   margin: 0;
   background: var(--bg);
-  color: var(--label);
+  color: var(--text);
   font-family: var(--font);
-  font-size: 17px;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior-y: none;
+  overflow-x: hidden;
 }
 
 button {
@@ -84,16 +125,91 @@ button {
   cursor: pointer;
 }
 
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---------- Grund mit Farbschimmern ---------- */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.backdrop::before,
+.backdrop::after,
+.backdrop span {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  opacity: var(--shimmer-opacity);
+  filter: blur(40px);
+}
+
+/* Akzent oben links */
+.backdrop::before {
+  width: 120vw;
+  height: 120vw;
+  top: -45vw;
+  left: -40vw;
+  background: radial-gradient(closest-side, var(--accent), transparent);
+}
+
+/* Lila rechts */
+.backdrop::after {
+  width: 110vw;
+  height: 110vw;
+  top: 25vh;
+  right: -55vw;
+  background: radial-gradient(closest-side, var(--ziele), transparent);
+}
+
+/* Zweiter, schwächerer Akzent unten */
+.backdrop span {
+  width: 100vw;
+  height: 100vw;
+  bottom: -50vw;
+  left: -20vw;
+  opacity: calc(var(--shimmer-opacity) * 0.7);
+  background: radial-gradient(closest-side, var(--accent), transparent);
+}
+
+/* ---------- Glas ---------- */
+
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-outline), var(--glass-shadow);
+  -webkit-backdrop-filter: var(--blur);
+  backdrop-filter: var(--blur);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background: var(--glass-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
 /* ---------- Grundlayout ---------- */
 
 .app {
+  position: relative;
   min-height: 100dvh;
   padding-top: env(safe-area-inset-top);
-  /* Platz für die schwebende Tab-Leiste */
-  padding-bottom: calc(var(--tab-bar-height) + var(--tab-bar-bottom) + 16px);
+  padding-bottom: calc(var(--dock-height) + var(--dock-bottom) + 16px);
 }
 
 .screen {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+  margin: 0 auto;
   padding: 0 16px 24px;
   padding-left: max(16px, env(safe-area-inset-left));
   padding-right: max(16px, env(safe-area-inset-right));
@@ -104,90 +220,109 @@ button {
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 0 8px;
+  padding: 16px 0 var(--gap);
 }
 
-.large-title {
+.eyebrow {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.page-title {
   margin: 0;
-  font-size: 34px;
+  font-size: 28px;
   font-weight: 700;
-  letter-spacing: 0.01em;
-  line-height: 1.2;
+  line-height: 1.15;
 }
 
-.icon-button {
+@media (min-width: 720px) {
+  .page-title {
+    font-size: 34px;
+  }
+}
+
+/* Runder Glas-Knopf (Sekundärknopf) */
+.round-button {
   display: grid;
   place-items: center;
+  flex: none;
   width: 44px;
   height: 44px;
-  margin-bottom: 2px;
-  color: var(--blue);
+  border-radius: 999px;
+  color: var(--text);
 }
 
-.icon-button svg {
-  width: 24px;
-  height: 24px;
+.round-button svg {
+  width: 20px;
+  height: 20px;
 }
+
+/* ---------- Karten ---------- */
 
 .card {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 16px;
+  border-radius: var(--r-card);
+  padding: var(--pad);
 }
 
-.placeholder {
-  margin: 8px 0 0;
-  color: var(--label-secondary);
+.card + .card {
+  margin-top: var(--gap);
+}
+
+.card-title {
+  margin: 0 0 6px;
   font-size: 15px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--accent), var(--text-mix));
 }
 
-/* ---------- Tab-Leiste ---------- */
+.card-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
 
-/* Schwebende Kapsel aus mattem Glas, seitlich eingerückt */
-.tab-bar {
+/* ---------- Dock (schwebende Tab-Leiste) ---------- */
+
+.dock {
   position: fixed;
-  left: max(16px, env(safe-area-inset-left));
-  right: max(16px, env(safe-area-inset-right));
-  bottom: var(--tab-bar-bottom);
+  left: max(var(--dock-margin), env(safe-area-inset-left));
+  right: max(var(--dock-margin), env(safe-area-inset-right));
+  bottom: var(--dock-bottom);
   max-width: 480px;
   margin: 0 auto;
-  height: var(--tab-bar-height);
+  z-index: 10;
+  height: var(--dock-height);
   display: flex;
-  padding: 4px;
+  padding: 6px;
   border-radius: 999px;
-  background: var(--glass);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-  backdrop-filter: saturate(180%) blur(24px);
-  border: 0.5px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
 }
 
-.tab {
+.dock-item {
   flex: 1;
+  min-width: 44px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  gap: 2px;
   border-radius: 999px;
-  color: var(--tab-inactive);
+  color: var(--text-secondary);
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.01em;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.tab svg {
-  width: 24px;
-  height: 24px;
+.dock-item svg {
+  width: 22px;
+  height: 22px;
 }
 
-/* Aktiver Tab: helle Kapsel dahinter, Symbol und Text in voller Schriftfarbe */
-.tab[aria-selected='true'] {
-  color: var(--label);
-  background: var(--tab-selected-bg);
-}
-
-.tab[aria-selected='true'] svg {
-  stroke-width: 2.2;
+.dock-item[aria-selected='true'] {
+  color: color-mix(in srgb, var(--accent), var(--text-mix));
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
