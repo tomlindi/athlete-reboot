@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import { formatClock, formatDuration } from '../../core/dates'
 import { formatRest, formatTarget, goalState, suggestRating } from '../../core/plans'
+import { newBests } from '../../core/progress'
 import {
   addExercise,
   addSet,
@@ -265,8 +266,9 @@ function NumberInput({
 }
 
 function FinishSheet({ open, workout, onClose }: { open: boolean; workout: Workout; onClose: () => void }) {
-  const { finishActive, discardActive } = useStore()
+  const { finishActive, discardActive, data, exerciseById } = useStore()
   const suggestion = open ? suggestRating(workout) : null
+  const bests = open ? newBests(workout, data.workouts) : []
   const [chosen, setRating] = useState<Rating | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const summary = summarize(workout)
@@ -311,6 +313,23 @@ function FinishSheet({ open, workout, onClose }: { open: boolean; workout: Worko
               Nicht so gut
             </button>
           </div>
+          {bests.length > 0 && (
+            <section className="list-section">
+              <h3 className="list-heading">Neue Bestwerte</h3>
+              <ul className="list inner">
+                {bests.map((b) => (
+                  <li key={b.exerciseId} className="list-row static">
+                    <span className="row-main">{exerciseById.get(b.exerciseId)?.name ?? 'Übung'}</span>
+                    <span className="best-value">
+                      <span className="is-new">
+                        {formatNumber(b.kg)} kg × {b.reps}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           {suggestion && (
             <p className="hint">
               Vorschlag nach deinen Planzielen: {suggestion.hit} von {suggestion.total} Übungen im Zielbereich. Du kannst die Bewertung ändern.

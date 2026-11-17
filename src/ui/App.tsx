@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CalendarDays, Dumbbell, ListChecks, Settings, TrendingUp, type LucideIcon } from 'lucide-react'
 import { HistoryTab } from './screens/HistoryTab'
 import { PlansTab } from './screens/PlansTab'
+import { ProgressTab } from './screens/ProgressTab'
 import { SettingsSheet } from './screens/SettingsSheet'
 import { TrainingStart } from './screens/TrainingTab'
 import { WorkoutScreen } from './screens/WorkoutScreen'
@@ -104,9 +105,7 @@ function Shell() {
           {tab === 'training' && <TrainingStart onOpenHistory={() => setTab('history')} onOpenPlans={() => setTab('plans')} />}
           {tab === 'history' && <HistoryTab />}
           {tab === 'plans' && <PlansTab />}
-          {tab === 'progress' && (
-            <ComingSoon text="Wochenübersicht, Gesamtkraft und Bestwerte kommen in Schritt 9." />
-          )}
+          {tab === 'progress' && <ProgressTab />}
         </main>
       )}
 
@@ -122,14 +121,5 @@ function Shell() {
 
       <SettingsSheet open={settings} onClose={() => setSettings(false)} />
     </div>
-  )
-}
-
-function ComingSoon({ text }: { text: string }) {
-  return (
-    <section className="card glass">
-      <h2 className="card-title">Bald verfügbar</h2>
-      <p className="card-text">{text}</p>
-    </section>
   )
 }
