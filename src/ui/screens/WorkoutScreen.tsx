@@ -1,0 +1,323 @@
+import { useEffect, useState } from 'react'
+import { MoreHorizontal } from 'lucide-react'
+import { formatClock, formatDuration } from '../../core/dates'
+import {
+  addExercise,
+  addSet,
+  formatNumber,
+  formatSet,
+  parseNumber,
+  previousSets,
+  removeExercise,
+  removeSet,
+  summarize,
+  toggleDone,
+  toggleFailure,
+  updateSet,
+} from '../../core/workout'
+import type { ExerciseEntry, Rating, SetEntry, Workout } from '../../core/types'
+import { Sheet } from '../components/Sheet'
+import { SwipeRow } from '../components/SwipeRow'
+import { useStore } from '../store'
+import { ExercisePicker } from './ExercisePicker'
+
+function useNow(intervalMs = 1000) {
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), intervalMs)
+    return () => clearInterval(id)
+  }, [intervalMs])
+  return now
+}
+
+export function WorkoutScreen({ workout }: { workout: Workout }) {
+  const { updateActive, data } = useStore()
+  const [picking, setPicking] = useState(false)
+  const [finishing, setFinishing] = useState(false)
+  const now = useNow()
+
+  return (
+    <>
+      <header className="workout-head glass">
+        <div className="workout-head-text">
+          <h1 className="workout-title">{workout.title}</h1>
+          <p className="workout-clock">{formatClock(now - workout.startedAt)}</p>
+        </div>
+        <button className="button primary small" onClick={() => setFinishing(true)}>
+          Beenden
+        </button>
+      </header>
+
+      <main className="screen workout-body">
+        {workout.exercises.length === 0 && (
+          <section className="card glass">
+            <h2 className="card-title">Los geht’s</h2>
+            <p className="card-text">Füge deine erste Übung hinzu. Gewicht und Wiederholungen vom letzten Mal werden vorausgefüllt.</p>
+          </section>
+        )}
+
+        {workout.exercises.map((entry) => (
+          <ExerciseCard
+            key={entry.id}
+            entry={entry}
+            previous={previousSets(data.workouts, entry.exerciseId, workout.id)}
+          />
+        ))}
+
+        <button className="button secondary wide" onClick={() => setPicking(true)}>
+          + Übung hinzufügen
+        </button>
+
+        {workout.exercises.length > 0 && (
+          <p className="hint">Satz nach rechts wischen: Muskelversagen. Nach links wischen: löschen.</p>
+        )}
+      </main>
+
+      <ExercisePicker
+        open={picking}
+        onClose={() => setPicking(false)}
+        onPick={(id) => updateActive((w) => addExercise(w, id, previousSets(data.workouts, id, w.id)))}
+      />
+
+      <FinishSheet open={finishing} workout={workout} onClose={() => setFinishing(false)} />
+    </>
+  )
+}
+
+function ExerciseCard({ entry, previous }: { entry: ExerciseEntry; previous: SetEntry[] }) {
+  const { updateActive, exerciseById } = useStore()
+  const [menu, setMenu] = useState(false)
+  const name = exerciseById.get(entry.exerciseId)?.name ?? 'Unbekannte Übung'
+
+  return (
+    <section className="card glass exercise-card">
+      <div className="exercise-head">
+        <h2 className="card-title">{name}</h2>
+        <button className="icon-button" aria-label={`Optionen für ${name}`} aria-expanded={menu} onClick={() => setMenu(!menu)}>
+          <MoreHorizontal strokeWidth={2} />
+        </button>
+      </div>
+
+      {menu && (
+        <div className="exercise-menu">
+          <button
+            className="button destructive small"
+            onClick={() => updateActive((w) => removeExercise(w, entry.id))}
+          >
+            Übung entfernen
+          </button>
+        </div>
+      )}
+
+      <div className="set-grid set-head" aria-hidden="true">
+        <span>Satz</span>
+        <span>Letztes</span>
+        <span>kg</span>
+        <span>Wdh</span>
+        <span className="center">✓</span>
+      </div>
+
+      {entry.sets.map((set, i) => (
+        <SetRow key={set.id} entryId={entry.id} set={set} index={i} previous={previous[i]} exerciseName={name} />
+      ))}
+
+      <button className="text-button add-set" onClick={() => updateActive((w) => addSet(w, entry.id, previous))}>
+        + Satz
+      </button>
+    </section>
+  )
+}
+
+function SetRow({
+  entryId,
+  set,
+  index,
+  previous,
+  exerciseName,
+}: {
+  entryId: string
+  set: SetEntry
+  index: number
+  previous?: SetEntry
+  exerciseName: string
+}) {
+  const { updateActive } = useStore()
+  const label = `${exerciseName}, Satz ${index + 1}`
+
+  return (
+    <SwipeRow
+      className={set.failure ? 'is-failure' : ''}
+      swipeRightLabel={set.failure ? 'Kein Versagen' : 'Muskelversagen'}
+      onSwipeRight={() => updateActive((w) => toggleFailure(w, entryId, set.id))}
+      onDelete={() => updateActive((w) => removeSet(w, entryId, set.id))}
+    >
+      <div className="set-grid set-row">
+        <span className="set-index">{index + 1}</span>
+        <span className="set-prev">{previous ? formatSet(previous) : '–'}</span>
+        <NumberInput
+          id={`kg-${set.id}`}
+          label={`${label}, Kilogramm`}
+          value={set.kg}
+          decimal
+          onChange={(kg) => updateActive((w) => updateSet(w, entryId, set.id, { kg }))}
+        />
+        <NumberInput
+          id={`reps-${set.id}`}
+          label={`${label}, Wiederholungen`}
+          value={set.reps}
+          onChange={(reps) => updateActive((w) => updateSet(w, entryId, set.id, { reps }))}
+        />
+        <button
+          className={`check ${set.done ? 'on' : ''}`}
+          role="checkbox"
+          aria-checked={set.done}
+          aria-label={`${label} erledigt`}
+          onClick={() => updateActive((w) => toggleDone(w, entryId, set.id))}
+        />
+      </div>
+    </SwipeRow>
+  )
+}
+
+/** Zahlenfeld, das Zwischenstände wie „82,“ beim Tippen erlaubt. */
+function NumberInput({
+  id,
+  label,
+  value,
+  decimal,
+  onChange,
+}: {
+  id: string
+  label: string
+  value: number | null
+  decimal?: boolean
+  onChange: (v: number | null) => void
+}) {
+  const [text, setText] = useState(formatNumber(value))
+  const [focused, setFocused] = useState(false)
+
+  // Von außen geänderte Werte übernehmen, solange nicht getippt wird
+  useEffect(() => {
+    if (!focused) setText(formatNumber(value))
+  }, [value, focused])
+
+  return (
+    <input
+      id={id}
+      className="set-input"
+      aria-label={label}
+      inputMode={decimal ? 'decimal' : 'numeric'}
+      enterKeyHint="next"
+      autoComplete="off"
+      value={text}
+      onFocus={(e) => {
+        setFocused(true)
+        e.currentTarget.select()
+      }}
+      onBlur={() => {
+        setFocused(false)
+        setText(formatNumber(value))
+      }}
+      onChange={(e) => {
+        const raw = decimal ? e.target.value.replace(/[^0-9,.]/g, '') : e.target.value.replace(/[^0-9]/g, '')
+        setText(raw)
+        onChange(parseNumber(raw))
+      }}
+    />
+  )
+}
+
+function FinishSheet({ open, workout, onClose }: { open: boolean; workout: Workout; onClose: () => void }) {
+  const { finishActive, discardActive } = useStore()
+  const [rating, setRating] = useState<Rating | null>(null)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const summary = summarize(workout)
+  const canSave = summary.sets > 0 && rating !== null
+
+  function close() {
+    setConfirmDiscard(false)
+    onClose()
+  }
+
+  return (
+    <Sheet open={open} title="Training beenden" onClose={close} closeLabel="Zurück">
+      <div className="stat-row">
+        <Stat value={formatDuration(Date.now() - workout.startedAt)} label="Dauer" />
+        <Stat value={String(summary.sets)} label="Sätze erledigt" />
+        <Stat value={`${formatNumber(Math.round(summary.volume))} kg`} label="Volumen" />
+      </div>
+
+      {summary.sets === 0 ? (
+        <p className="empty-text">Hake mindestens einen Satz ab, um das Training zu speichern. Nicht abgehakte Sätze werden nicht gespeichert.</p>
+      ) : (
+        <>
+          <h3 className="list-heading">Wie war’s?</h3>
+          <div className="rating-choice" role="radiogroup" aria-label="Bewertung">
+            <button
+              role="radio"
+              aria-checked={rating === 'good'}
+              className={`rating good ${rating === 'good' ? 'on' : ''}`}
+              onClick={() => setRating('good')}
+            >
+              Gut
+            </button>
+            <button
+              role="radio"
+              aria-checked={rating === 'meh'}
+              className={`rating meh ${rating === 'meh' ? 'on' : ''}`}
+              onClick={() => setRating('meh')}
+            >
+              Nicht so gut
+            </button>
+          </div>
+          <p className="hint">Nicht abgehakte Sätze werden beim Speichern entfernt.</p>
+        </>
+      )}
+
+      <button
+        className="button primary wide"
+        disabled={!canSave}
+        onClick={() => {
+          if (!rating) return
+          finishActive(rating)
+          close()
+        }}
+      >
+        Training speichern
+      </button>
+
+      {confirmDiscard ? (
+        <div className="confirm">
+          <p>Das ganze Training wird gelöscht. Das lässt sich nicht rückgängig machen.</p>
+          <div className="form-actions">
+            <button className="button secondary" onClick={() => setConfirmDiscard(false)}>
+              Behalten
+            </button>
+            <button
+              className="button destructive"
+              onClick={() => {
+                discardActive()
+                close()
+              }}
+            >
+              Verwerfen
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button className="text-button danger wide" onClick={() => setConfirmDiscard(true)}>
+          Training verwerfen
+        </button>
+      )}
+    </Sheet>
+  )
+}
+
+export function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="stat">
+      <span className="stat-value">{value}</span>
+      <span className="stat-label">{label}</span>
+    </div>
+  )
+}

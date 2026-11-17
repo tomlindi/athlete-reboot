@@ -1,0 +1,129 @@
+import { newId } from './ids'
+import type { ExerciseEntry, SetEntry, Workout } from './types'
+
+// Reine Funktionen: Sie verändern nichts, sondern geben immer ein neues Training zurück.
+
+export function createWorkout(now = Date.now(), title = 'Freies Training'): Workout {
+  return { id: newId(), type: 'gym', title, startedAt: now, exercises: [] }
+}
+
+export function emptySet(prefill?: Pick<SetEntry, 'kg' | 'reps'>): SetEntry {
+  return { id: newId(), kg: prefill?.kg ?? null, reps: prefill?.reps ?? null, done: false, failure: false }
+}
+
+/** Fügt eine Übung mit einem ersten Satz hinzu, vorbefüllt mit dem ersten Satz vom letzten Mal. */
+export function addExercise(w: Workout, exerciseId: string, previous: SetEntry[] = []): Workout {
+  const first = previous[0]
+  const entry: ExerciseEntry = {
+    id: newId(),
+    exerciseId,
+    sets: [emptySet(first ? { kg: first.kg, reps: first.reps } : undefined)],
+  }
+  return { ...w, exercises: [...w.exercises, entry] }
+}
+
+export function removeExercise(w: Workout, entryId: string): Workout {
+  return { ...w, exercises: w.exercises.filter((e) => e.id !== entryId) }
+}
+
+function mapEntry(w: Workout, entryId: string, fn: (e: ExerciseEntry) => ExerciseEntry): Workout {
+  return { ...w, exercises: w.exercises.map((e) => (e.id === entryId ? fn(e) : e)) }
+}
+
+/**
+ * Neuer Satz: übernimmt Gewicht und Wiederholungen des vorigen Satzes in diesem Training,
+ * sonst den passenden Satz vom letzten Mal.
+ */
+export function addSet(w: Workout, entryId: string, previous: SetEntry[] = []): Workout {
+  return mapEntry(w, entryId, (e) => {
+    const last = e.sets[e.sets.length - 1]
+    const fromPrevious = previous[e.sets.length]
+    const prefill = last ? { kg: last.kg, reps: last.reps } : fromPrevious
+    return { ...e, sets: [...e.sets, emptySet(prefill)] }
+  })
+}
+
+export function updateSet(w: Workout, entryId: string, setId: string, patch: Partial<SetEntry>): Workout {
+  return mapEntry(w, entryId, (e) => ({
+    ...e,
+    sets: e.sets.map((s) => (s.id === setId ? { ...s, ...patch } : s)),
+  }))
+}
+
+export function removeSet(w: Workout, entryId: string, setId: string): Workout {
+  return mapEntry(w, entryId, (e) => ({ ...e, sets: e.sets.filter((s) => s.id !== setId) }))
+}
+
+/** Haken setzen oder entfernen. */
+export function toggleDone(w: Workout, entryId: string, setId: string): Workout {
+  const set = findSet(w, entryId, setId)
+  if (!set) return w
+  return updateSet(w, entryId, setId, { done: !set.done, failure: set.done ? false : set.failure })
+}
+
+/** Muskelversagen markieren. Ein Satz bis zum Versagen gilt automatisch als erledigt. */
+export function toggleFailure(w: Workout, entryId: string, setId: string): Workout {
+  const set = findSet(w, entryId, setId)
+  if (!set) return w
+  return updateSet(w, entryId, setId, { failure: !set.failure, done: set.failure ? set.done : true })
+}
+
+function findSet(w: Workout, entryId: string, setId: string): SetEntry | undefined {
+  return w.exercises.find((e) => e.id === entryId)?.sets.find((s) => s.id === setId)
+}
+
+/** Erledigte Sätze und Volumen (kg × Wdh) eines Trainings. */
+export function summarize(w: Workout): { sets: number; volume: number; exercises: number } {
+  let sets = 0
+  let volume = 0
+  for (const e of w.exercises) {
+    for (const s of e.sets) {
+      if (!s.done) continue
+      sets++
+      volume += (s.kg ?? 0) * (s.reps ?? 0)
+    }
+  }
+  return { sets, volume, exercises: w.exercises.filter((e) => e.sets.some((s) => s.done)).length }
+}
+
+/** Beim Beenden: nicht abgehakte Sätze und leere Übungen fallen weg. */
+export function finishWorkout(w: Workout, rating: Workout['rating'], now = Date.now()): Workout {
+  const exercises = w.exercises
+    .map((e) => ({ ...e, sets: e.sets.filter((s) => s.done) }))
+    .filter((e) => e.sets.length > 0)
+  return { ...w, exercises, rating, endedAt: now }
+}
+
+/**
+ * Die Sätze dieser Übung aus dem letzten beendeten Training.
+ * Grundlage für die Spalte „Letztes Mal“ und das Vorbefüllen.
+ */
+export function previousSets(workouts: Workout[], exerciseId: string, beforeWorkoutId?: string): SetEntry[] {
+  const finished = workouts
+    .filter((w) => w.endedAt !== undefined && w.id !== beforeWorkoutId)
+    .sort((a, b) => b.startedAt - a.startedAt)
+  for (const w of finished) {
+    const entry = w.exercises.find((e) => e.exerciseId === exerciseId)
+    if (entry && entry.sets.length > 0) return entry.sets
+  }
+  return []
+}
+
+/** Liest Eingaben wie „82,5“ oder „82.5“. Leer oder ungültig = null. */
+export function parseNumber(input: string): number | null {
+  const cleaned = input.trim().replace(',', '.')
+  if (cleaned === '') return null
+  const n = Number(cleaned)
+  return Number.isFinite(n) && n >= 0 ? n : null
+}
+
+/** Zahl für die Anzeige im deutschen Format, ohne unnötige Nachkommastellen. */
+export function formatNumber(n: number | null): string {
+  if (n === null) return ''
+  return n.toLocaleString('de-DE', { maximumFractionDigits: 2 })
+}
+
+export function formatSet(s: Pick<SetEntry, 'kg' | 'reps'>): string {
+  if (s.kg === null && s.reps === null) return '–'
+  return `${formatNumber(s.kg ?? 0)} × ${s.reps ?? 0}`
+}

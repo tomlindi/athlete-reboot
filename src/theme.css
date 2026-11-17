@@ -232,16 +232,18 @@ button {
 .app {
   position: relative;
   min-height: 100dvh;
-  padding-top: env(safe-area-inset-top);
   padding-bottom: calc(var(--dock-height) + var(--dock-bottom) + 16px);
 }
 
 .screen {
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
   max-width: 720px;
   margin: 0 auto;
-  padding: 0 16px 24px;
+  padding: env(safe-area-inset-top) 16px 24px;
   padding-left: max(16px, env(safe-area-inset-left));
   padding-right: max(16px, env(safe-area-inset-right));
 }
@@ -251,7 +253,7 @@ button {
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 0 var(--gap);
+  padding: 16px 0 4px;
 }
 
 /* Datum über dem Titel: kräftiger und deckend, damit es auf dem iPhone scharf wirkt */
@@ -298,10 +300,6 @@ button {
 .card {
   border-radius: var(--r-card);
   padding: var(--pad);
-}
-
-.card + .card {
-  margin-top: var(--gap);
 }
 
 .card-title {

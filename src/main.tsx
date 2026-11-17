@@ -4,6 +4,7 @@ import App from './ui/App'
 // Ersatzschrift für Geräte ohne Apple-Schrift (z. B. Windows), wird mitgeliefert und funktioniert offline
 import '@fontsource-variable/inter'
 import './theme.css'
+import './components.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

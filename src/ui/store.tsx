@@ -1,0 +1,170 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createBackup, parseBackup } from '../core/backup'
+import { newId } from '../core/ids'
+import { createWorkout, finishWorkout } from '../core/workout'
+import type { Background, Backup, Exercise, MuscleGroup, Rating, Workout } from '../core/types'
+import * as db from '../storage/db'
+
+// Zentraler Zustand der App. Jede Änderung wird sofort auf dem Gerät gespeichert,
+// damit ein laufendes Training auch das Schließen der App übersteht.
+
+interface Store {
+  data: db.AppData
+  active: Workout | undefined
+  exerciseById: Map<string, Exercise>
+  notice: string | null
+  dismissNotice: () => void
+  startWorkout: () => void
+  updateActive: (fn: (w: Workout) => Workout) => void
+  finishActive: (rating: Rating) => void
+  discardActive: () => void
+  deleteWorkout: (id: string) => void
+  toggleRestDay: (date: string) => void
+  addExercise: (name: string, group: MuscleGroup) => Exercise
+  setExerciseHidden: (id: string, hidden: boolean) => void
+  setBackground: (bg: Background) => void
+  exportBackup: () => Backup
+  importBackup: (text: string) => Promise<Backup>
+}
+
+const StoreContext = createContext<Store | null>(null)
+
+export function useStore(): Store {
+  const s = useContext(StoreContext)
+  if (!s) throw new Error('useStore außerhalb von StoreProvider')
+  return s
+}
+
+export function StoreProvider({ children }: { children: ReactNode }) {
+  const [data, setData] = useState<db.AppData | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  // Die Referenz ist die aktuelle Wahrheit, auch wenn mehrere Änderungen vor dem nächsten Rendern kommen.
+  const ref = useRef<db.AppData | null>(null)
+
+  useEffect(() => {
+    db.loadAll()
+      .then((d) => {
+        ref.current = d
+        setData(d)
+        db.requestPersistence()
+      })
+      .catch(() => setLoadError('Deine Daten konnten nicht geladen werden. Schließe die App und öffne sie erneut.'))
+  }, [])
+
+  // Hintergrund-Variante am <html>-Element setzen
+  useEffect(() => {
+    if (data) document.documentElement.dataset.bg = data.settings.background
+  }, [data?.settings.background])
+
+  const apply = useCallback((next: db.AppData) => {
+    ref.current = next
+    setData(next)
+  }, [])
+
+  const report = useCallback(() => {
+    setNotice('Speichern hat nicht geklappt. Deine letzte Änderung ist eventuell verloren. Prüfe, ob auf dem iPhone genug Speicher frei ist.')
+  }, [])
+
+  const putWorkout = useCallback(
+    (w: Workout) => {
+      const d = ref.current!
+      const exists = d.workouts.some((x) => x.id === w.id)
+      apply({ ...d, workouts: exists ? d.workouts.map((x) => (x.id === w.id ? w : x)) : [...d.workouts, w] })
+      db.saveWorkout(w).catch(report)
+    },
+    [apply, report],
+  )
+
+  const store = useMemo<Store | null>(() => {
+    if (!data) return null
+    const active = data.workouts.find((w) => w.endedAt === undefined)
+    const exerciseById = new Map(data.exercises.map((e) => [e.id, e]))
+    const current = () => ref.current!
+    const currentActive = () => current().workouts.find((w) => w.endedAt === undefined)
+
+    return {
+      data,
+      active,
+      exerciseById,
+      notice,
+      dismissNotice: () => setNotice(null),
+
+      startWorkout() {
+        if (currentActive()) return
+        putWorkout(createWorkout())
+      },
+
+      updateActive(fn) {
+        const a = currentActive()
+        if (a) putWorkout(fn(a))
+      },
+
+      finishActive(rating) {
+        const a = currentActive()
+        if (a) putWorkout(finishWorkout(a, rating))
+      },
+
+      discardActive() {
+        const a = currentActive()
+        if (!a) return
+        const d = current()
+        apply({ ...d, workouts: d.workouts.filter((w) => w.id !== a.id) })
+        db.deleteWorkout(a.id).catch(report)
+      },
+
+      deleteWorkout(id) {
+        const d = current()
+        apply({ ...d, workouts: d.workouts.filter((w) => w.id !== id) })
+        db.deleteWorkout(id).catch(report)
+      },
+
+      toggleRestDay(date) {
+        const d = current()
+        const isRest = d.restDays.some((r) => r.date === date)
+        apply({ ...d, restDays: isRest ? d.restDays.filter((r) => r.date !== date) : [...d.restDays, { date }] })
+        db.setRestDay(date, !isRest).catch(report)
+      },
+
+      addExercise(name, group) {
+        const e: Exercise = { id: `eigen-${newId()}`, name: name.trim(), group, custom: true }
+        const d = current()
+        apply({ ...d, exercises: [...d.exercises, e] })
+        db.saveExercise(e).catch(report)
+        return e
+      },
+
+      setExerciseHidden(id, hidden) {
+        const d = current()
+        const e = d.exercises.find((x) => x.id === id)
+        if (!e) return
+        const next = { ...e, hidden }
+        apply({ ...d, exercises: d.exercises.map((x) => (x.id === id ? next : x)) })
+        db.saveExercise(next).catch(report)
+      },
+
+      setBackground(background) {
+        const d = current()
+        const settings = { ...d.settings, background }
+        apply({ ...d, settings })
+        db.saveSettings(settings).catch(report)
+      },
+
+      exportBackup() {
+        const d = current()
+        return createBackup(d)
+      },
+
+      async importBackup(text) {
+        const backup = parseBackup(text)
+        await db.replaceAll(backup)
+        apply(await db.loadAll())
+        return backup
+      },
+    }
+  }, [data, notice, apply, putWorkout, report])
+
+  if (loadError) return <p className="load-error">{loadError}</p>
+  if (!store) return null
+  return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>
+}
