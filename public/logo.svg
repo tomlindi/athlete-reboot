@@ -1,10 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Logo „Comeback-Loop“ nach Toms Entwurf: komplett weißer Grund, nur Ring und Blitz farbig -->
+  <!-- Logo „Comeback-Loop“ nach Toms Entwurf: weißer Grund ohne Schimmer, Ring ohne blassen Übergang -->
   <rect width="512" height="512" fill="#ffffff"/>
 
-  <!-- Noch offenes Viertel des Rings (blass) -->
-  <path d="M 106 256 A 150 150 0 0 1 256 106" fill="none" stroke="#ff2d55" stroke-opacity="0.22" stroke-width="44"/>
-  <!-- Geschafft: drei Viertel des Rings -->
+  <!-- Drei Viertel des Rings, die Lücke steht für das Comeback, das noch läuft -->
   <path d="M 256 106 A 150 150 0 1 1 106 256" fill="none" stroke="#ff2d55" stroke-width="44" stroke-linecap="round"/>
 
   <!-- Blitz (Form nach Lucide „zap“, ISC-Lizenz) -->
