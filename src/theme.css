@@ -1,0 +1,169 @@
+/*
+  Athlete Reboot: Design-Grundlage im Apple-Stil.
+  Farben = Apple-Systemfarben, jeweils hell und dunkel.
+  Feste Bedeutungen (in beiden Modi gleich):
+    grün   = geschafft / Muskelversagen / Bestwert
+    blau   = normale Buttons und Aktionen
+    orange = Pausentimer
+    rot    = Knieschmerz über 3/10, Löschen
+    indigo = Rest Day / Erholung
+*/
+
+:root {
+  color-scheme: light dark;
+
+  --bg: #f2f2f7;
+  --card: #ffffff;
+  --label: #000000;
+  --label-secondary: rgba(60, 60, 67, 0.6);
+  --separator: rgba(60, 60, 67, 0.29);
+  --bar: rgba(249, 249, 249, 0.82);
+  --tab-inactive: #999999;
+
+  --green: #34c759;
+  --blue: #007aff;
+  --orange: #ff9500;
+  --red: #ff3b30;
+  --indigo: #5856d6;
+
+  --radius: 12px;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;
+    --card: #1c1c1e;
+    --label: #ffffff;
+    --label-secondary: rgba(235, 235, 245, 0.6);
+    --separator: rgba(84, 84, 88, 0.65);
+    --bar: rgba(22, 22, 22, 0.82);
+    --tab-inactive: #8e8e93;
+
+    --green: #30d158;
+    --blue: #0a84ff;
+    --orange: #ff9f0a;
+    --red: #ff453a;
+    --indigo: #5e5ce6;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--label);
+  font-family: var(--font);
+  font-size: 17px;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  overscroll-behavior-y: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* ---------- Grundlayout ---------- */
+
+.app {
+  min-height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  /* Platz für die Tab-Leiste */
+  padding-bottom: calc(50px + env(safe-area-inset-bottom));
+}
+
+.screen {
+  padding: 0 16px 24px;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+.screen-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0 8px;
+}
+
+.large-title {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 2px;
+  color: var(--blue);
+}
+
+.icon-button svg {
+  width: 24px;
+  height: 24px;
+}
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.placeholder {
+  margin: 8px 0 0;
+  color: var(--label-secondary);
+  font-size: 15px;
+}
+
+/* ---------- Tab-Leiste ---------- */
+
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--bar);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-top: 0.5px solid var(--separator);
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  height: 50px;
+  padding-top: 6px;
+  color: var(--tab-inactive);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.tab svg {
+  width: 26px;
+  height: 26px;
+}
+
+.tab[aria-selected='true'] {
+  color: var(--blue);
+}

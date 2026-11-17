@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Schlicht: schwarzer Grund, grüner Neustart-Bogen -->
+  <rect width="512" height="512" fill="#000000"/>
+  <path d="M 360 172 A 128 128 0 1 0 384 256" fill="none" stroke="#30D158" stroke-width="44" stroke-linecap="round"/>
+  <path d="M 318 150 L 392 140 L 382 214 Z" fill="#30D158" stroke="#30D158" stroke-width="16" stroke-linejoin="round"/>
+</svg>
