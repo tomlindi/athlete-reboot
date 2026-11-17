@@ -25,6 +25,7 @@
   --inner: rgba(0, 0, 0, 0.04);
   --text: #1c1c1e;
   --text-secondary: #6e6e73;
+  --eyebrow: #48484a;
   --separator: rgba(0, 0, 0, 0.08);
   --focus: #000000;
   --on-accent: #ffffff;
@@ -57,7 +58,8 @@
   --blur: blur(24px) saturate(180%);
   --dock-height: 64px;
   --dock-margin: 12px;
-  --dock-bottom: max(var(--dock-margin), calc(env(safe-area-inset-bottom) - 8px));
+  /* Tiefer am unteren Rand, knapp über dem Home-Balken des iPhones */
+  --dock-bottom: max(8px, calc(env(safe-area-inset-bottom) - 20px));
 }
 
 @media (prefers-color-scheme: dark) {
@@ -72,6 +74,7 @@
     --inner: rgba(255, 255, 255, 0.06);
     --text: #ffffff;
     --text-secondary: #a6a6b0;
+    --eyebrow: #c7c7cc;
     --separator: rgba(255, 255, 255, 0.12);
     --focus: #ffffff;
     --on-accent: #000000;
@@ -251,13 +254,14 @@ button {
   padding: 16px 0 var(--gap);
 }
 
+/* Datum über dem Titel: kräftiger und deckend, damit es auf dem iPhone scharf wirkt */
 .eyebrow {
   margin: 0 0 2px;
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--eyebrow);
 }
 
 .page-title {
