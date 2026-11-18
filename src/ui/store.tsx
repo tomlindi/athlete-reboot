@@ -9,6 +9,7 @@ import { finishCardio, manualCardio, startCardio, type CardioInput } from '../co
 import { startCardioPlan } from '../core/cardioPlan'
 import type { Background, Backup, Exercise, Measure, MuscleGroup, Plan, Program, Rating, Settings, Sport, Workout } from '../core/types'
 import { startProgramSession } from '../core/program'
+import type { ImportPreview } from '../core/planImport'
 import * as db from '../storage/db'
 
 // Zentraler Zustand der App. Jede Änderung wird sofort auf dem Gerät gespeichert,
@@ -27,6 +28,8 @@ interface Store {
   startPlan: (planId: string) => void
   savePlan: (plan: Plan) => void
   saveProgram: (p: Program) => void
+  /** Geprüfte Pläne, Programme und neue Übungen hinzufügen */
+  importPlans: (r: ImportPreview) => void
   deleteProgram: (id: string) => void
   startProgramDay: (programId: string, week: number, weekday: number) => void
   /** Reihenfolge nach dem Ziehen in einer gefilterten Planliste */
@@ -157,6 +160,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const exists = d.programs.some((x) => x.id === p.id)
         apply({ ...d, programs: exists ? d.programs.map((x) => (x.id === p.id ? p : x)) : [...d.programs, p] })
         db.saveProgram(p).catch(report)
+      },
+
+      importPlans(r) {
+        const d = current()
+        apply({
+          ...d,
+          exercises: [...d.exercises, ...r.newExercises],
+          plans: [...d.plans, ...r.plans].sort((a, b) => a.order - b.order),
+          programs: [...d.programs, ...r.programs],
+        })
+        db.putMany({ exercises: r.newExercises, plans: r.plans, workouts: [] }).catch(report)
+        for (const p of r.programs) db.saveProgram(p).catch(report)
       },
 
       deleteProgram(id) {

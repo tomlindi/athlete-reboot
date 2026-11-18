@@ -1978,3 +1978,40 @@ body.sheet-open {
 .program-card .card-head {
   margin-bottom: 4px;
 }
+
+/* ---------- Pläne importieren ---------- */
+
+.import-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.import-steps .button svg {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+}
+
+.import-text {
+  width: 100%;
+  min-height: 140px;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: var(--field);
+  color: var(--text);
+  font: 15px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+  resize: vertical;
+}
+
+.import-warnings {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 15px;
+  color: var(--orange-text);
+}
+
+.rating-dot.gym {
+  background: var(--accent);
+}

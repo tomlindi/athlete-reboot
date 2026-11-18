@@ -19,6 +19,7 @@ import { lastSport } from '../../core/cardio'
 import { Segmented } from '../components/Segmented'
 import { CardioPlanEditor } from './CardioPlanEditor'
 import { ProgramsView } from './ProgramsView'
+import { PlanImportButton } from './PlanImportSheet'
 import { MEASURE_LONG, MEASURE_MAX, MEASURE_SHORT, measureOf } from '../../core/measure'
 import { Sheet } from '../components/Sheet'
 import { useStore } from '../store'
@@ -187,6 +188,7 @@ export function PlansTab() {
       <>
         {switcher}
         <ProgramsView />
+        <PlanImportButton />
       </>
     )
   }
@@ -202,6 +204,7 @@ export function PlansTab() {
         <p className="hint">Tippe auf einen Plan, um ihn zu bearbeiten. Am Griff ≡ ziehst du ihn an eine andere Stelle.</p>
       )}
       <HiddenPlans kind={view} onEdit={setEditing} />
+      <PlanImportButton />
 
       <NewPlanSheet
         open={creating}
