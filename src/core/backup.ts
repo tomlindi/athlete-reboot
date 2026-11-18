@@ -1,10 +1,11 @@
-import { DEFAULT_SETTINGS, type Backup, type Exercise, type Plan, type RestDay, type Settings, type Workout } from './types'
+import { DEFAULT_SETTINGS, type Backup, type Exercise, type Plan, type Program, type RestDay, type Settings, type Workout } from './types'
 
 export function createBackup(data: {
   exercises: Exercise[]
   workouts: Workout[]
   restDays: RestDay[]
   plans: Plan[]
+  programs?: Program[]
   settings: Settings
 }, now = new Date()): Backup {
   return {
@@ -15,6 +16,7 @@ export function createBackup(data: {
     workouts: data.workouts,
     restDays: data.restDays,
     plans: data.plans,
+    programs: data.programs ?? [],
     settings: data.settings,
   }
 }
@@ -47,6 +49,7 @@ export function parseBackup(text: string): Backup {
     workouts: b.workouts,
     restDays: b.restDays,
     plans: Array.isArray(b.plans) ? b.plans : [],
+    programs: Array.isArray(b.programs) ? b.programs : [],
     settings: { ...DEFAULT_SETTINGS, ...(b.settings ?? {}) },
   }
 }

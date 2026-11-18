@@ -7,7 +7,8 @@ import { createWorkout, finishWorkout } from '../core/workout'
 import { measureOf } from '../core/measure'
 import { finishCardio, manualCardio, startCardio, type CardioInput } from '../core/cardio'
 import { startCardioPlan } from '../core/cardioPlan'
-import type { Background, Backup, Exercise, Measure, MuscleGroup, Plan, Rating, Settings, Sport, Workout } from '../core/types'
+import type { Background, Backup, Exercise, Measure, MuscleGroup, Plan, Program, Rating, Settings, Sport, Workout } from '../core/types'
+import { startProgramSession } from '../core/program'
 import * as db from '../storage/db'
 
 // Zentraler Zustand der App. Jede Änderung wird sofort auf dem Gerät gespeichert,
@@ -25,6 +26,9 @@ interface Store {
   addCardio: (input: CardioInput, startedAt: number) => void
   startPlan: (planId: string) => void
   savePlan: (plan: Plan) => void
+  saveProgram: (p: Program) => void
+  deleteProgram: (id: string) => void
+  startProgramDay: (programId: string, week: number, weekday: number) => void
   /** Reihenfolge nach dem Ziehen in einer gefilterten Planliste */
   reorderPlans: (groupIds: string[], from: number, to: number) => void
   deletePlan: (id: string) => void
@@ -146,6 +150,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const byId = new Map(changed.map((p) => [p.id, p]))
         apply({ ...d, plans: d.plans.map((p) => byId.get(p.id) ?? p).sort((a, b) => a.order - b.order) })
         for (const p of changed) db.savePlan(p).catch(report)
+      },
+
+      saveProgram(p) {
+        const d = current()
+        const exists = d.programs.some((x) => x.id === p.id)
+        apply({ ...d, programs: exists ? d.programs.map((x) => (x.id === p.id ? p : x)) : [...d.programs, p] })
+        db.saveProgram(p).catch(report)
+      },
+
+      deleteProgram(id) {
+        const d = current()
+        apply({ ...d, programs: d.programs.filter((x) => x.id !== id) })
+        db.deleteProgram(id).catch(report)
+      },
+
+      startProgramDay(programId, week, weekday) {
+        if (currentActive()) return
+        const d = current()
+        const p = d.programs.find((x) => x.id === programId)
+        const day = p?.days.find((x) => x.weekday === weekday)
+        const plan = day && d.plans.find((x) => x.id === day.planId)
+        if (!p || !plan) return
+        putWorkout(startProgramSession(p, plan, week, weekday, d.workouts, Date.now(), (id) => measureOf(exerciseById.get(id))))
       },
 
       deletePlan(id) {

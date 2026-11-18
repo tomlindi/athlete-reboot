@@ -1,6 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 import { markTimedEntries, mergeDefaultExercises } from '../core/exercises'
-import { DEFAULT_SETTINGS, type Backup, type Exercise, type Plan, type RestDay, type Settings, type Workout } from '../core/types'
+import { DEFAULT_SETTINGS, type Backup, type Exercise, type Plan, type Program, type RestDay, type Settings, type Workout } from '../core/types'
 
 // Speicher-Schicht: alle Daten liegen auf dem Gerät in IndexedDB.
 // Die App spricht nur über diese Funktionen mit dem Speicher, damit er später austauschbar ist.
@@ -11,6 +11,7 @@ interface AthleteDB extends DBSchema {
   restDays: { key: string; value: RestDay }
   settings: { key: string; value: Settings }
   plans: { key: string; value: Plan }
+  programs: { key: string; value: Program }
 }
 
 const DB_NAME = 'athlete-reboot'
@@ -19,8 +20,8 @@ const SETTINGS_KEY = 'app'
 let dbPromise: Promise<IDBPDatabase<AthleteDB>> | null = null
 
 function db() {
-  // Version 2 (Schritt 7) ergänzt die Pläne. Vorhandene Daten bleiben beim Update erhalten.
-  dbPromise ??= openDB<AthleteDB>(DB_NAME, 2, {
+  // Version 2 (Schritt 7) ergänzt die Pläne, Version 3 (0.11) die Programme. Vorhandene Daten bleiben erhalten.
+  dbPromise ??= openDB<AthleteDB>(DB_NAME, 3, {
     upgrade(d, oldVersion) {
       if (oldVersion < 1) {
         d.createObjectStore('exercises', { keyPath: 'id' })
@@ -32,6 +33,9 @@ function db() {
       if (oldVersion < 2) {
         d.createObjectStore('plans', { keyPath: 'id' })
       }
+      if (oldVersion < 3) {
+        d.createObjectStore('programs', { keyPath: 'id' })
+      }
     },
   })
   return dbPromise
@@ -42,17 +46,19 @@ export interface AppData {
   workouts: Workout[]
   restDays: RestDay[]
   plans: Plan[]
+  programs: Program[]
   settings: Settings
 }
 
 /** Lädt alles beim Start. Fehlende Standard-Übungen werden ergänzt. */
 export async function loadAll(): Promise<AppData> {
   const d = await db()
-  const [storedExercises, workouts, restDays, plans, settings] = await Promise.all([
+  const [storedExercises, workouts, restDays, plans, programs, settings] = await Promise.all([
     d.getAll('exercises'),
     d.getAll('workouts'),
     d.getAll('restDays'),
     d.getAll('plans'),
+    d.getAll('programs'),
     d.get('settings', SETTINGS_KEY),
   ])
   const exercises = mergeDefaultExercises(storedExercises)
@@ -73,6 +79,7 @@ export async function loadAll(): Promise<AppData> {
     workouts: workouts.map((w) => byId.get(w.id) ?? w),
     restDays,
     plans,
+    programs: programs.sort((a, b) => a.startDate.localeCompare(b.startDate)),
     settings: { ...DEFAULT_SETTINGS, ...settings },
   }
 }
@@ -95,6 +102,14 @@ export async function savePlan(p: Plan) {
 
 export async function deletePlan(id: string) {
   await (await db()).delete('plans', id)
+}
+
+export async function saveProgram(p: Program) {
+  await (await db()).put('programs', p)
+}
+
+export async function deleteProgram(id: string) {
+  await (await db()).delete('programs', id)
 }
 
 /** Fügt importierte Daten hinzu, ohne Vorhandenes zu löschen. Ganz oder gar nicht. */
@@ -122,15 +137,17 @@ export async function saveSettings(s: Settings) {
 /** Ersetzt alle Daten durch ein Backup. Läuft in einer Transaktion: ganz oder gar nicht. */
 export async function replaceAll(b: Backup) {
   const d = await db()
-  const tx = d.transaction(['exercises', 'workouts', 'restDays', 'plans', 'settings'], 'readwrite')
+  const tx = d.transaction(['exercises', 'workouts', 'restDays', 'plans', 'programs', 'settings'], 'readwrite')
   await Promise.all([
     tx.objectStore('exercises').clear(),
     tx.objectStore('workouts').clear(),
     tx.objectStore('restDays').clear(),
     tx.objectStore('plans').clear(),
+    tx.objectStore('programs').clear(),
   ])
   await Promise.all([
     ...b.plans.map((p) => tx.objectStore('plans').put(p)),
+    ...(b.programs ?? []).map((p) => tx.objectStore('programs').put(p)),
     ...mergeDefaultExercises(b.exercises).map((e) => tx.objectStore('exercises').put(e)),
     ...b.workouts.map((w) => tx.objectStore('workouts').put(w)),
     ...b.restDays.map((r) => tx.objectStore('restDays').put(r)),

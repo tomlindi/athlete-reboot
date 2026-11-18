@@ -142,6 +142,30 @@ export interface Plan {
 /** Trainingsart: Gym (Sätze) oder Ausdauer (Dauer, Distanz). */
 export type WorkoutType = 'gym' | 'cardio'
 
+/** Trainingstag eines Programms: Wochentag (0 = Montag) und Plan */
+export interface ProgramDay {
+  weekday: number
+  planId: string
+}
+
+/** Mehrwochen-Programm mit festen Wochentagen und automatischer Steigerung */
+export interface Program {
+  id: string
+  name: string
+  /** Montag der ersten Woche, JJJJ-MM-TT */
+  startDate: string
+  weeks: number
+  days: ProgramDay[]
+  rules: {
+    /** Gym: +1 Satz alle 2 Wochen, höchstens +2 */
+    gymExtraSet: boolean
+    /** Ausdauer: +1 Intervall bzw. +10 % Umfang pro Woche */
+    cardioProgress: boolean
+  }
+  /** Wochen (1-basiert), die auf Wunsch leichter sind */
+  lighterWeeks?: number[]
+}
+
 export type Sport = 'laufen' | 'rad' | 'schwimmen'
 
 /** Daten einer Ausdauer-Einheit */
@@ -187,6 +211,8 @@ export interface Workout {
   rating?: Rating
   exercises: ExerciseEntry[]
   planId?: string
+  /** Einheit aus einem Programm: welches, welche Woche, welcher Wochentag */
+  program?: { programId: string; week: number; weekday: number }
   /** Nur bei type = 'cardio'. Bei beendeten Einheiten ist endedAt − startedAt die Bewegungszeit. Plan-Läufe tragen `planId`. */
   cardio?: CardioData
   /** Laufende Pause. Gespeichert als Endzeitpunkt, damit sie App-Wechsel und Neustart übersteht. */
@@ -238,5 +264,7 @@ export interface Backup {
   restDays: RestDay[]
   /** Ab Schritt 7. Ältere Backups haben keine Pläne. */
   plans: Plan[]
+  /** Ab 0.11. Ältere Backups haben keine Programme. */
+  programs?: Program[]
   settings: Settings
 }

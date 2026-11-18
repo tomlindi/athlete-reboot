@@ -18,6 +18,7 @@ import { cardioPlanSummary, createCardioPlan } from '../../core/cardioPlan'
 import { lastSport } from '../../core/cardio'
 import { Segmented } from '../components/Segmented'
 import { CardioPlanEditor } from './CardioPlanEditor'
+import { ProgramsView } from './ProgramsView'
 import { MEASURE_LONG, MEASURE_MAX, MEASURE_SHORT, measureOf } from '../../core/measure'
 import { Sheet } from '../components/Sheet'
 import { useStore } from '../store'
@@ -161,12 +162,38 @@ export function PlansTab() {
   const { data, savePlan } = useStore()
   const [editing, setEditing] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
-  const [view] = useTrainingView()
+  const [view, setView] = useTrainingView()
+  const [showPrograms, setShowPrograms] = useState(false)
   const editingPlan = data.plans.find((p) => p.id === editing)
+
+  const switcher = (
+    <Segmented
+      label="Planart"
+      value={showPrograms ? 'program' : view}
+      onChange={(v) => {
+        setShowPrograms(v === 'program')
+        if (v !== 'program') setView(v)
+      }}
+      options={[
+        { value: 'gym', label: 'Gym' },
+        { value: 'cardio', label: 'Ausdauer' },
+        { value: 'program', label: 'Programme' },
+      ]}
+    />
+  )
+
+  if (showPrograms) {
+    return (
+      <>
+        {switcher}
+        <ProgramsView />
+      </>
+    )
+  }
 
   return (
     <>
-      <TrainingViewSwitch />
+      {switcher}
       <button className="button secondary wide" onClick={() => setCreating(true)}>
         {view === 'cardio' ? '+ Neuer Ausdauer-Plan' : '+ Neuer Plan'}
       </button>

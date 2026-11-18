@@ -112,6 +112,13 @@ function Shell() {
   const current = TABS.find((t) => t.id === tab)!
   const showWorkout = tab === 'training' && active
 
+  // Startet ein Training (z. B. aus dem Pläne-Tab), direkt zum Training wechseln
+  const lastActiveId = useRef<string | undefined>(active?.id)
+  useEffect(() => {
+    if (active?.id && active.id !== lastActiveId.current) setTab('training')
+    lastActiveId.current = active?.id
+  }, [active?.id])
+
   return (
     <div className="app">
       <div className="backdrop" aria-hidden="true">

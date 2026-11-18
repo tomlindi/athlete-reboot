@@ -1858,3 +1858,123 @@ body.sheet-open {
     transition: none;
   }
 }
+
+/* ---------- Programme ---------- */
+
+.program-card {
+  gap: 10px;
+}
+
+.program-days {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.program-day {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 6px 8px 6px 12px;
+  border-radius: 16px;
+  background: var(--inner);
+}
+
+.program-day.today {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.program-day.missed .row-title,
+.program-day.done .row-title {
+  color: var(--text-secondary);
+}
+
+.program-weekday {
+  flex: none;
+  width: 28px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.program-day.today .program-weekday {
+  color: var(--accent-text);
+}
+
+/* Erledigt: grüner Haken mit Text „Erledigt“ daneben, nie Farbe allein */
+.done-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+}
+
+.done-mark svg {
+  width: 16px;
+  height: 16px;
+}
+
+.program-day .button svg {
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+}
+
+.chip-toggle {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--inner);
+  color: var(--accent-text);
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.chip-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.chip-toggle.on {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.weekday-row {
+  gap: 12px;
+}
+
+.weekday-select {
+  max-width: 55%;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.toggle-row input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+}
+
+.program-card .card-head {
+  margin-bottom: 4px;
+}
