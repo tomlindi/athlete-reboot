@@ -1,12 +1,13 @@
-import { useState } from 'react'
-import { ChevronDown, ChevronRight, ChevronUp, Minus, Plus, Trash2 } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { ChevronDown, ChevronRight, Eye, EyeOff, Minus, Plus, Trash2 } from 'lucide-react'
+import { DragHandle, Sortable } from '../components/Sortable'
 import {
   addPlanExercise,
   createPlan,
   defaultTarget,
   formatRest,
   formatTarget,
-  movePlanExercise,
+  movePlanExerciseTo,
   planSetCount,
   removePlanExercise,
   REST_OPTIONS,
@@ -44,11 +45,15 @@ export function TrainingViewSwitch() {
   )
 }
 
-export const plansOfKind = (plans: Plan[], kind: PlanKind) => plans.filter((p) => (p.kind ?? 'gym') === kind)
+/** Sichtbare Pläne einer Art. Mit `hidden = true` nur die ausgeblendeten. */
+export const plansOfKind = (plans: Plan[], kind: PlanKind, hidden = false) =>
+  plans.filter((p) => (p.kind ?? 'gym') === kind && !!p.hidden === hidden)
 
 export function PlanList({ kind, onEdit, showEmptyHint = true }: { kind: PlanKind; onEdit?: (id: string) => void; showEmptyHint?: boolean }) {
-  const { data, startPlan, active } = useStore()
+  const { data, startPlan, active, reorderPlans } = useStore()
   const plans = plansOfKind(data.plans, kind)
+  // Ziehen nur im Pläne-Tab (dort, wo bearbeitet wird)
+  const sortable = !!onEdit
 
   if (plans.length === 0) {
     return showEmptyHint ? (
@@ -64,9 +69,18 @@ export function PlanList({ kind, onEdit, showEmptyHint = true }: { kind: PlanKin
   }
 
   return (
-    <ul className="list glass">
-      {plans.map((p) => (
-        <li key={p.id} className="plan-row">
+    <Sortable
+      items={plans}
+      as="ul"
+      itemAs="li"
+      className="list glass"
+      itemClassName="plan-row"
+      label={(p) => p.name}
+      onMove={(from, to) => reorderPlans(plans.map((p) => p.id), from, to)}
+    >
+      {(p, _i, handle) => (
+        <>
+          {sortable && <DragHandle {...handle} />}
           <button className="list-row two-line" onClick={() => onEdit?.(p.id)} disabled={!onEdit}>
             <span className="row-main">
               <span className="row-title">{p.name}</span>
@@ -86,9 +100,60 @@ export function PlanList({ kind, onEdit, showEmptyHint = true }: { kind: PlanKin
           >
             Starten
           </button>
-        </li>
-      ))}
-    </ul>
+        </>
+      )}
+    </Sortable>
+  )
+}
+
+/** Zugeklappter Bereich mit ausgeblendeten Plänen, zum Wieder-Einblenden. */
+function HiddenPlans({ kind, onEdit }: { kind: PlanKind; onEdit: (id: string) => void }) {
+  const { data, savePlan } = useStore()
+  const [open, setOpen] = useState(false)
+  const hidden = plansOfKind(data.plans, kind, true)
+  if (hidden.length === 0) return null
+
+  return (
+    <section className="list-section">
+      <button className="text-button hidden-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
+        {open ? <ChevronDown strokeWidth={2} aria-hidden="true" /> : <ChevronRight strokeWidth={2} aria-hidden="true" />}
+        Ausgeblendet ({hidden.length})
+      </button>
+      {open && (
+        <ul className="list glass">
+          {hidden.map((p) => (
+            <li key={p.id} className="plan-row">
+              <button className="list-row" onClick={() => onEdit(p.id)}>
+                <span className="row-main muted">{p.name}</span>
+              </button>
+              <button className="button secondary small plan-start" onClick={() => savePlan({ ...p, hidden: false })} aria-label={`${p.name} einblenden`}>
+                Einblenden
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+/** Knopf im Plan-Editor: ausblenden oder wieder einblenden. */
+export function HidePlanButton({ plan, onHidden }: { plan: Plan; onHidden: () => void }) {
+  const { savePlan } = useStore()
+  return plan.hidden ? (
+    <button className="text-button wide" onClick={() => savePlan({ ...plan, hidden: false })}>
+      <Eye strokeWidth={2} aria-hidden="true" /> Plan wieder einblenden
+    </button>
+  ) : (
+    <button
+      className="text-button wide"
+      onClick={() => {
+        savePlan({ ...plan, hidden: true })
+        onHidden()
+      }}
+    >
+      <EyeOff strokeWidth={2} aria-hidden="true" /> Plan ausblenden
+    </button>
   )
 }
 
@@ -106,7 +171,10 @@ export function PlansTab() {
         {view === 'cardio' ? '+ Neuer Ausdauer-Plan' : '+ Neuer Plan'}
       </button>
       <PlanList kind={view} onEdit={setEditing} />
-      {plansOfKind(data.plans, view).length > 0 && <p className="hint">Tippe auf einen Plan, um ihn zu bearbeiten.</p>}
+      {plansOfKind(data.plans, view).length > 0 && (
+        <p className="hint">Tippe auf einen Plan, um ihn zu bearbeiten. Am Griff ≡ ziehst du ihn an eine andere Stelle.</p>
+      )}
+      <HiddenPlans kind={view} onEdit={setEditing} />
 
       <NewPlanSheet
         open={creating}
@@ -192,19 +260,23 @@ function PlanEditor({ planId, onClose }: { planId: string | null; onClose: () =>
 
         {plan.exercises.length === 0 && <p className="empty-text">Noch keine Übungen. Füge die erste hinzu.</p>}
 
-        {plan.exercises.map((pe, i) => (
-          <PlanExerciseRow
-            key={pe.id}
-            pe={pe}
-            name={exerciseById.get(pe.exerciseId)?.name ?? 'Unbekannte Übung'}
-            measure={measureOf(exerciseById.get(pe.exerciseId))}
-            first={i === 0}
-            last={i === plan.exercises.length - 1}
-            onChange={(patch) => update(updatePlanExercise(plan, pe.id, patch, measureOf(exerciseById.get(pe.exerciseId))))}
-            onMove={(d) => update(movePlanExercise(plan, pe.id, d))}
-            onRemove={() => update(removePlanExercise(plan, pe.id))}
-          />
-        ))}
+        <Sortable
+          items={plan.exercises}
+          className="plan-exercises"
+          label={(pe) => exerciseById.get(pe.exerciseId)?.name ?? 'Übung'}
+          onMove={(from, to) => update(movePlanExerciseTo(plan, from, to))}
+        >
+          {(pe, _i, handle) => (
+            <PlanExerciseRow
+              pe={pe}
+              name={exerciseById.get(pe.exerciseId)?.name ?? 'Unbekannte Übung'}
+              measure={measureOf(exerciseById.get(pe.exerciseId))}
+              handle={<DragHandle {...handle} />}
+              onChange={(patch) => update(updatePlanExercise(plan, pe.id, patch, measureOf(exerciseById.get(pe.exerciseId))))}
+              onRemove={() => update(removePlanExercise(plan, pe.id))}
+            />
+          )}
+        </Sortable>
 
         <button className="button secondary wide" onClick={() => setPicking(true)}>
           + Übung hinzufügen
@@ -215,6 +287,8 @@ function PlanEditor({ planId, onClose }: { planId: string | null; onClose: () =>
             {plan.exercises.length} Übungen · {planSetCount(plan)} Sätze. Schaffst du in allen Sätzen das obere Ende, zeigt das Training „Ziel geschafft“: Zeit für mehr Gewicht.
           </p>
         )}
+
+        <HidePlanButton plan={plan} onHidden={close} />
 
         {confirmDelete ? (
           <div className="confirm">
@@ -254,36 +328,27 @@ function PlanExerciseRow({
   pe,
   name,
   measure,
-  first,
-  last,
+  handle,
   onChange,
-  onMove,
   onRemove,
 }: {
   pe: PlanExercise
   name: string
   measure: Measure
-  first: boolean
-  last: boolean
+  handle: ReactNode
   onChange: (patch: Partial<PlanExercise>) => void
-  onMove: (delta: -1 | 1) => void
   onRemove: () => void
 }) {
   return (
     <section className="plan-exercise">
       <div className="plan-exercise-head">
+        {handle}
         <div className="row-main">
           <span className="row-title">{name}</span>
           <span className="row-sub">
             {formatTarget(pe, measure)} · Pause {formatRest(pe.restSec)}
           </span>
         </div>
-        <button className="icon-button small" aria-label={`${name} nach oben`} disabled={first} onClick={() => onMove(-1)}>
-          <ChevronUp strokeWidth={2} />
-        </button>
-        <button className="icon-button small" aria-label={`${name} nach unten`} disabled={last} onClick={() => onMove(1)}>
-          <ChevronDown strokeWidth={2} />
-        </button>
         <button className="icon-button small danger" aria-label={`${name} aus dem Plan entfernen`} onClick={onRemove}>
           <Trash2 strokeWidth={2} />
         </button>

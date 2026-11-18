@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { createBackup, parseBackup } from '../core/backup'
 import { newId } from '../core/ids'
 import { mergeLifeDashboard, parseLifeDashboardExport, type ImportResult } from '../core/lifeDashboard'
-import { workoutFromPlan } from '../core/plans'
+import { reorderPlans, workoutFromPlan } from '../core/plans'
 import { createWorkout, finishWorkout } from '../core/workout'
 import { measureOf } from '../core/measure'
 import { finishCardio, manualCardio, startCardio, type CardioInput } from '../core/cardio'
@@ -25,6 +25,8 @@ interface Store {
   addCardio: (input: CardioInput, startedAt: number) => void
   startPlan: (planId: string) => void
   savePlan: (plan: Plan) => void
+  /** Reihenfolge nach dem Ziehen in einer gefilterten Planliste */
+  reorderPlans: (groupIds: string[], from: number, to: number) => void
   deletePlan: (id: string) => void
   importLifeDashboard: (text: string) => Promise<ImportResult>
   updateActive: (fn: (w: Workout) => Workout) => void
@@ -135,6 +137,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const exists = d.plans.some((x) => x.id === plan.id)
         apply({ ...d, plans: exists ? d.plans.map((x) => (x.id === plan.id ? plan : x)) : [...d.plans, plan] })
         db.savePlan(plan).catch(report)
+      },
+
+      reorderPlans(groupIds, from, to) {
+        const d = current()
+        const changed = reorderPlans(d.plans, groupIds, from, to)
+        if (changed.length === 0) return
+        const byId = new Map(changed.map((p) => [p.id, p]))
+        apply({ ...d, plans: d.plans.map((p) => byId.get(p.id) ?? p).sort((a, b) => a.order - b.order) })
+        for (const p of changed) db.savePlan(p).catch(report)
       },
 
       deletePlan(id) {

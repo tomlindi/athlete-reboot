@@ -1,5 +1,6 @@
 import { newId } from './ids'
 import { entryFlag, entryMeasure, MEASURE_UNIT } from './measure'
+import { moveItem } from './order'
 import type { ExerciseEntry, Measure, SetEntry, Workout } from './types'
 
 // Reine Funktionen: Sie verändern nichts, sondern geben immer ein neues Training zurück.
@@ -25,6 +26,30 @@ export function addExercise(w: Workout, exerciseId: string, previous: SetEntry[]
     sets: [emptySet(first ? { kg: first.kg, reps: first.reps } : undefined)],
   }
   return { ...w, exercises: [...w.exercises, entry] }
+}
+
+/** Verschiebt eine Übung im laufenden Training (z. B. nach dem Ziehen). */
+export function moveExercise(w: Workout, from: number, to: number): Workout {
+  return { ...w, exercises: moveItem(w.exercises, from, to) }
+}
+
+/**
+ * Tauscht eine Übung im laufenden Training gegen eine andere. Gleiche Satzzahl, vorbefüllt mit
+ * dem letzten Mal der neuen Übung. Die Plan-Vorgabe bleibt, wenn die Messart gleich ist.
+ * Bereits erledigte Sätze der alten Übung fallen weg. Der Plan selbst ändert sich nicht.
+ */
+export function replaceExercise(w: Workout, entryId: string, exerciseId: string, previous: SetEntry[] = [], measure: Measure = 'reps'): Workout {
+  const next = mapEntry(w, entryId, (e) => {
+    const count = Math.max(1, e.sets.length)
+    const sameMeasure = entryMeasure(e) === measure
+    const { timed: _t, distance: _d, target, ...rest } = e
+    const sets = Array.from({ length: count }, (_, i) => {
+      const p = previous[i] ?? previous[previous.length - 1]
+      return emptySet(p ? { kg: p.kg, reps: p.reps } : undefined)
+    })
+    return { ...rest, exerciseId, ...entryFlag(measure), ...(sameMeasure && target ? { target } : {}), sets }
+  })
+  return w.hold?.entryId === entryId ? cancelHold(next) : next
 }
 
 export function removeExercise(w: Workout, entryId: string): Workout {

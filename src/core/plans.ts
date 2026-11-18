@@ -1,6 +1,7 @@
 import { newId } from './ids'
 import { emptySet, previousSets } from './workout'
 import { entryFlag, MEASURE_MAX, MEASURE_UNIT } from './measure'
+import { moveItem } from './order'
 import type { ExerciseEntry, Measure, Plan, PlanExercise, Rating, Target, Workout } from './types'
 
 // Trainingspläne: reine Funktionen, die immer einen neuen Plan zurückgeben.
@@ -45,6 +46,27 @@ export function movePlanExercise(plan: Plan, id: string, delta: -1 | 1): Plan {
   const list = [...plan.exercises]
   ;[list[i], list[j]] = [list[j], list[i]]
   return { ...plan, exercises: list }
+}
+
+/** Verschiebt eine Übung im Plan von Position `from` nach `to` (Ziehen). */
+export function movePlanExerciseTo(plan: Plan, from: number, to: number): Plan {
+  return { ...plan, exercises: moveItem(plan.exercises, from, to) }
+}
+
+/**
+ * Neue Reihenfolge nach dem Ziehen innerhalb einer Liste (z. B. nur Ausdauer-Pläne).
+ * Die gezogenen Pläne bekommen die Plätze, die diese Gruppe vorher belegt hat; andere Pläne bleiben, wo sie sind.
+ * Gibt nur Pläne mit geändertem `order` zurück.
+ */
+export function reorderPlans(all: Plan[], groupIds: string[], from: number, to: number): Plan[] {
+  const sorted = [...all].sort((a, b) => a.order - b.order)
+  const slots = sorted.map((p, i) => (groupIds.includes(p.id) ? i : -1)).filter((i) => i >= 0)
+  const moved = moveItem(groupIds, from, to)
+  const result = [...sorted]
+  slots.forEach((slot, k) => {
+    result[slot] = sorted.find((p) => p.id === moved[k])!
+  })
+  return result.flatMap((p, i) => (p.order === i ? [] : [{ ...p, order: i }]))
 }
 
 /** Hält die Werte in sinnvollen Grenzen: 1–10 Sätze, 1–50 Wdh (bzw. 1–600 s, 1–2000 m), Minimum nie über Maximum. */

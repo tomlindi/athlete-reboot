@@ -128,6 +128,8 @@ export interface Plan {
   name: string
   /** Fehlt = Gym */
   kind?: PlanKind
+  /** Ausgeblendet: nicht im Training-Tab, im Pläne-Tab unter „Ausgeblendet“ */
+  hidden?: boolean
   /** Nur Ausdauer-Plan */
   sport?: Sport
   /** Nur Ausdauer-Plan */

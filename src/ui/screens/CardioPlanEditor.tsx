@@ -1,7 +1,9 @@
-import { useState } from 'react'
-import { ChevronDown, ChevronUp, Minus, Plus, Trash2 } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { Minus, Plus, Trash2 } from 'lucide-react'
+import { DragHandle, Sortable } from '../components/Sortable'
+import { HidePlanButton } from './PlansTab'
 import { SPORT_LABEL, SPORTS } from '../../core/cardio'
-import { addBlock, cardioPlanSummary, formatBlock, moveBlock, removeBlock, updateBlock } from '../../core/cardioPlan'
+import { addBlock, cardioPlanSummary, formatBlock, moveBlockTo, removeBlock, updateBlock } from '../../core/cardioPlan'
 import { formatNumber, parseNumber } from '../../core/workout'
 import type { Amount, CardioBlock, Plan } from '../../core/types'
 import { Segmented } from '../components/Segmented'
@@ -52,17 +54,16 @@ export function CardioPlanEditor({ plan, onClose }: { plan: Plan; onClose: () =>
 
       {blocks.length === 0 && <p className="empty-text">Noch keine Abschnitte. Füge den ersten hinzu.</p>}
 
-      {blocks.map((b, i) => (
-        <BlockRow
-          key={b.id}
-          block={b}
-          first={i === 0}
-          last={i === blocks.length - 1}
-          onChange={(patch) => update(updateBlock(plan, b.id, patch))}
-          onMove={(d) => update(moveBlock(plan, b.id, d))}
-          onRemove={() => update(removeBlock(plan, b.id))}
-        />
-      ))}
+      <Sortable items={blocks} className="plan-exercises" label={(b) => b.label || 'Abschnitt'} onMove={(from, to) => update(moveBlockTo(plan, from, to))}>
+        {(b, _i, handle) => (
+          <BlockRow
+            block={b}
+            handle={<DragHandle {...handle} />}
+            onChange={(patch) => update(updateBlock(plan, b.id, patch))}
+            onRemove={() => update(removeBlock(plan, b.id))}
+          />
+        )}
+      </Sortable>
 
       <button className="button secondary wide" onClick={() => update(addBlock(plan))}>
         + Abschnitt
@@ -73,6 +74,8 @@ export function CardioPlanEditor({ plan, onClose }: { plan: Plan; onClose: () =>
           {cardioPlanSummary(plan)}. Abschnitte nach Zeit wechseln beim Lauf von selbst, Abschnitte nach Strecke mit „Weiter“.
         </p>
       )}
+
+      <HidePlanButton plan={plan} onHidden={close} />
 
       {confirmDelete ? (
         <div className="confirm">
@@ -103,17 +106,13 @@ export function CardioPlanEditor({ plan, onClose }: { plan: Plan; onClose: () =>
 
 function BlockRow({
   block,
-  first,
-  last,
+  handle,
   onChange,
-  onMove,
   onRemove,
 }: {
   block: CardioBlock
-  first: boolean
-  last: boolean
+  handle: ReactNode
   onChange: (patch: Partial<CardioBlock>) => void
-  onMove: (delta: -1 | 1) => void
   onRemove: () => void
 }) {
   const reps = block.repeat ?? 1
@@ -122,16 +121,11 @@ function BlockRow({
   return (
     <section className="plan-exercise">
       <div className="plan-exercise-head">
+        {handle}
         <div className="row-main">
           <span className="row-title">{name}</span>
           <span className="row-sub">{formatBlock(block)}</span>
         </div>
-        <button className="icon-button small" aria-label={`${name} nach oben`} disabled={first} onClick={() => onMove(-1)}>
-          <ChevronUp strokeWidth={2} />
-        </button>
-        <button className="icon-button small" aria-label={`${name} nach unten`} disabled={last} onClick={() => onMove(1)}>
-          <ChevronDown strokeWidth={2} />
-        </button>
         <button className="icon-button small danger" aria-label={`${name} entfernen`} onClick={onRemove}>
           <Trash2 strokeWidth={2} />
         </button>

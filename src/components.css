@@ -1773,3 +1773,88 @@ body.sheet-open {
 .phase-card .button {
   margin-top: 4px;
 }
+
+/* ---------- Ziehen zum Verschieben (Pläne, Übungen, Abschnitte) ---------- */
+
+.drag-handle {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  min-height: 44px;
+  margin-left: -8px;
+  color: var(--text-secondary);
+  cursor: grab;
+  /* Sonst scrollt der Finger die Seite statt die Zeile zu ziehen */
+  touch-action: none;
+}
+
+.drag-handle svg {
+  width: 20px;
+  height: 20px;
+}
+
+.sortable-item {
+  position: relative;
+}
+
+.sortable.is-sorting .sortable-item {
+  transition: transform 0.15s ease;
+}
+
+.sortable-item.dragging {
+  z-index: 5;
+  cursor: grabbing;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  border-radius: 16px;
+  background: var(--sheet);
+}
+
+.sortable.is-sorting {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.plan-exercises,
+.exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.plan-row .drag-handle {
+  margin-left: 4px;
+}
+
+.hidden-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+}
+
+.hidden-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+.row-main.muted {
+  color: var(--text-secondary);
+}
+
+.text-button.wide svg {
+  width: 18px;
+  height: 18px;
+  vertical-align: -3px;
+  margin-right: 4px;
+}
+
+.exercise-menu {
+  flex-wrap: wrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sortable.is-sorting .sortable-item {
+    transition: none;
+  }
+}

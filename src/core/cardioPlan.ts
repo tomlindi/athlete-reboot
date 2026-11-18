@@ -1,5 +1,6 @@
 import { elapsedMs, SPORT_LABEL } from './cardio'
 import { newId } from './ids'
+import { moveItem } from './order'
 import { formatNumber } from './workout'
 import type { Amount, CardioBlock, Phase, Plan, Sport, Workout } from './types'
 
@@ -65,6 +66,11 @@ export function moveBlock(plan: Plan, id: string, delta: -1 | 1): Plan {
   if (i < 0 || j < 0 || j >= list.length) return plan
   ;[list[i], list[j]] = [list[j], list[i]]
   return { ...plan, blocks: list }
+}
+
+/** Verschiebt einen Abschnitt von Position `from` nach `to` (Ziehen). */
+export function moveBlockTo(plan: Plan, from: number, to: number): Plan {
+  return { ...plan, blocks: moveItem(plan.blocks ?? [], from, to) }
 }
 
 /** Löst Wiederholungen auf: 6 × (Belastung + Pause), ohne Pause nach der letzten Belastung. */

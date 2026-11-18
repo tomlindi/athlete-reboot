@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { MoreHorizontal, Play } from 'lucide-react'
+import { DragHandle, Sortable } from '../components/Sortable'
+import type { ReactNode } from 'react'
 import { entryMeasure, MEASURE_LONG, MEASURE_SHORT, measureOf } from '../../core/measure'
 import { formatClock, formatDuration } from '../../core/dates'
 import { formatRest, formatTarget, goalState, suggestRating } from '../../core/plans'
@@ -11,6 +13,8 @@ import {
   completeSet,
   finishHold,
   holdRemaining,
+  moveExercise,
+  replaceExercise,
   startHold,
   extendRest,
   failSet,
@@ -45,6 +49,8 @@ export function WorkoutScreen({ workout }: { workout: Workout }) {
   const { updateActive, data, exerciseById } = useStore()
   const [picking, setPicking] = useState(false)
   const [finishing, setFinishing] = useState(false)
+  // Übung, die gerade gegen eine andere getauscht wird
+  const [replacing, setReplacing] = useState<string | null>(null)
   // Während einer Pause oder eines Countdowns öfter aktualisieren, damit der Balken flüssig läuft
   const now = useNow(workout.rest || workout.hold ? 250 : 1000)
 
@@ -70,13 +76,21 @@ export function WorkoutScreen({ workout }: { workout: Workout }) {
           </section>
         )}
 
-        {workout.exercises.map((entry) => (
-          <ExerciseCard
-            key={entry.id}
-            entry={entry}
-            previous={previousSets(data.workouts, entry.exerciseId, workout.id)}
-          />
-        ))}
+        <Sortable
+          items={workout.exercises}
+          className="exercise-list"
+          label={(e) => exerciseById.get(e.exerciseId)?.name ?? 'Übung'}
+          onMove={(from, to) => updateActive((w) => moveExercise(w, from, to))}
+        >
+          {(entry, _i, handle) => (
+            <ExerciseCard
+              entry={entry}
+              previous={previousSets(data.workouts, entry.exerciseId, workout.id)}
+              handle={workout.exercises.length > 1 ? <DragHandle {...handle} /> : null}
+              onReplace={() => setReplacing(entry.id)}
+            />
+          )}
+        </Sortable>
 
         <button className="button secondary wide" onClick={() => setPicking(true)}>
           + Übung hinzufügen
@@ -93,12 +107,31 @@ export function WorkoutScreen({ workout }: { workout: Workout }) {
         onPick={(id) => updateActive((w) => addExercise(w, id, previousSets(data.workouts, id, w.id), measureOf(exerciseById.get(id))))}
       />
 
+      <ExercisePicker
+        open={replacing !== null}
+        onClose={() => setReplacing(null)}
+        onPick={(id) => {
+          const entryId = replacing
+          if (entryId) updateActive((w) => replaceExercise(w, entryId, id, previousSets(data.workouts, id, w.id), measureOf(exerciseById.get(id))))
+        }}
+      />
+
       <FinishSheet open={finishing} workout={workout} onClose={() => setFinishing(false)} />
     </>
   )
 }
 
-function ExerciseCard({ entry, previous }: { entry: ExerciseEntry; previous: SetEntry[] }) {
+function ExerciseCard({
+  entry,
+  previous,
+  handle,
+  onReplace,
+}: {
+  entry: ExerciseEntry
+  previous: SetEntry[]
+  handle: ReactNode
+  onReplace: () => void
+}) {
   const { updateActive, exerciseById } = useStore()
   const [menu, setMenu] = useState(false)
   const name = exerciseById.get(entry.exerciseId)?.name ?? 'Unbekannte Übung'
@@ -109,6 +142,7 @@ function ExerciseCard({ entry, previous }: { entry: ExerciseEntry; previous: Set
   return (
     <section className="card glass exercise-card">
       <div className="exercise-head">
+        {handle}
         <div className="exercise-title">
           <h2 className="card-title">{name}</h2>
           {entry.target && (
@@ -126,11 +160,24 @@ function ExerciseCard({ entry, previous }: { entry: ExerciseEntry; previous: Set
       {menu && (
         <div className="exercise-menu">
           <button
+            className="button secondary small"
+            onClick={() => {
+              setMenu(false)
+              onReplace()
+            }}
+          >
+            Übung tauschen
+          </button>
+          <button
             className="button destructive small"
             onClick={() => updateActive((w) => removeExercise(w, entry.id))}
           >
             Übung entfernen
           </button>
+          <p className="hint">
+            Tauschen und Verschieben ändert nur das heutige Training, nicht den Plan.
+            {entry.sets.some((s) => s.done) ? ' Erledigte Sätze dieser Übung fallen beim Tauschen weg.' : ''}
+          </p>
         </div>
       )}
 
