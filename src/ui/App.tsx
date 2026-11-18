@@ -8,7 +8,7 @@ import { TrainingStart } from './screens/TrainingTab'
 import { WorkoutScreen } from './screens/WorkoutScreen'
 import { StoreProvider, useStore } from './store'
 import { playRestEnd } from './sound'
-import { stopRest } from '../core/workout'
+import { finishHold, stopRest } from '../core/workout'
 
 type TabId = 'training' | 'plans' | 'history' | 'progress'
 
@@ -65,9 +65,47 @@ function useRestEnd() {
   }, [endsAt, sound, updateActive])
 }
 
+/**
+ * Beendet den Countdown einer Zeit-Übung, wenn die Zeit um ist: Satz wird abgehakt, die Pause startet.
+ * Ton wie am Ende der Pause. War die App im Hintergrund, passiert das still beim nächsten Öffnen.
+ */
+function useHoldEnd() {
+  const { active, updateActive, data } = useStore()
+  const endsAt = active?.hold?.endsAt
+  const { restSound: sound, defaultRestSec } = data.settings
+  const fired = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (!endsAt) return
+    const fire = () => {
+      if (fired.current === endsAt) return
+      fired.current = endsAt
+      const late = Date.now() - endsAt > 5000
+      if (sound && !late && document.visibilityState === 'visible') playRestEnd()
+      // Mit dem Endzeitpunkt beenden, damit die volle Zeit zählt und die Pause ab dort läuft
+      updateActive((w) => (w.hold?.endsAt === endsAt ? finishHold(w, defaultRestSec, endsAt) : w))
+    }
+    const wait = endsAt - Date.now()
+    if (wait <= 0) {
+      fire()
+      return
+    }
+    const id = setTimeout(fire, wait)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && Date.now() >= endsAt) fire()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearTimeout(id)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [endsAt, sound, defaultRestSec, updateActive])
+}
+
 function Shell() {
   const { active, notice, dismissNotice } = useStore()
   useRestEnd()
+  useHoldEnd()
   const [tab, setTab] = useState<TabId>('training')
   const [settings, setSettings] = useState(false)
   const current = TABS.find((t) => t.id === tab)!

@@ -217,7 +217,7 @@ function WorkoutDetail({ workout, onClose }: { workout: Workout | undefined; onC
             {e.sets.map((set, i) => (
               <li key={set.id} className={`list-row static ${set.failure ? 'is-failure' : ''}`}>
                 <span className="row-meta">Satz {i + 1}</span>
-                <span className="row-main">{formatSet(set)}</span>
+                <span className="row-main">{formatSet(set, e.timed)}</span>
                 {set.failure && <span className="failure-tag">Muskelversagen</span>}
               </li>
             ))}

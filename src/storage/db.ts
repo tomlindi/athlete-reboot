@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
-import { mergeDefaultExercises } from '../core/exercises'
+import { markTimedEntries, mergeDefaultExercises } from '../core/exercises'
 import { DEFAULT_SETTINGS, type Backup, type Exercise, type Plan, type RestDay, type Settings, type Workout } from '../core/types'
 
 // Speicher-Schicht: alle Daten liegen auf dem Gerät in IndexedDB.
@@ -56,12 +56,25 @@ export async function loadAll(): Promise<AppData> {
     d.get('settings', SETTINGS_KEY),
   ])
   const exercises = mergeDefaultExercises(storedExercises)
-  if (exercises.length !== storedExercises.length) {
+  const changedExercises = exercises.filter((e, i) => e !== storedExercises[i])
+  if (changedExercises.length > 0) {
     const tx = d.transaction('exercises', 'readwrite')
-    await Promise.all([...exercises.map((e) => tx.store.put(e)), tx.done])
+    await Promise.all([...changedExercises.map((e) => tx.store.put(e)), tx.done])
   }
+  const changedWorkouts = markTimedEntries(workouts, exercises)
+  if (changedWorkouts.length > 0) {
+    const tx = d.transaction('workouts', 'readwrite')
+    await Promise.all([...changedWorkouts.map((w) => tx.store.put(w)), tx.done])
+  }
+  const byId = new Map(changedWorkouts.map((w) => [w.id, w]))
   plans.sort((a, b) => a.order - b.order)
-  return { exercises, workouts, restDays, plans, settings: { ...DEFAULT_SETTINGS, ...settings } }
+  return {
+    exercises,
+    workouts: workouts.map((w) => byId.get(w.id) ?? w),
+    restDays,
+    plans,
+    settings: { ...DEFAULT_SETTINGS, ...settings },
+  }
 }
 
 export async function saveWorkout(w: Workout) {

@@ -42,7 +42,7 @@ describe('Bestwerte pro Übung', () => {
 
   it('erkennt neue Bestwerte, aber nicht beim ersten Mal', () => {
     const next = w(7 * DAY, [['bank', 90, 6], ['knie', 100, 5], ['rudern', 60, 8]])
-    expect(newBests(next, [...history, next])).toEqual([{ exerciseId: 'bank', kg: 90, reps: 6, e1rm: 108 }])
+    expect(newBests(next, [...history, next])).toEqual([{ exerciseId: 'bank', kg: 90, reps: 6, e1rm: 108, timed: false }])
   })
 })
 

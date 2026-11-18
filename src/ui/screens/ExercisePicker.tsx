@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { matchesSearch } from '../../core/exercises'
-import { MUSCLE_GROUPS, type Exercise, type MuscleGroup } from '../../core/types'
+import { isTimed, matchesSearch } from '../../core/exercises'
+import { MUSCLE_GROUPS, type Exercise, type Measure, type MuscleGroup } from '../../core/types'
 import { Sheet } from '../components/Sheet'
 import { useStore } from '../store'
 
@@ -77,6 +77,7 @@ export function ExercisePicker({
                   }}
                 >
                   <span>{e.name}</span>
+                  {isTimed(e) && <span className="row-meta">Sekunden</span>}
                   {e.custom && <span className="row-meta">Eigene</span>}
                 </button>
               </li>
@@ -100,6 +101,7 @@ export function ExerciseForm({
   const { addExercise, data } = useStore()
   const [name, setName] = useState(initialName.trim())
   const [group, setGroup] = useState<MuscleGroup>('Brust')
+  const [measure, setMeasure] = useState<Measure>('reps')
   const trimmed = name.trim()
   const duplicate = data.exercises.some((e) => e.name.toLowerCase() === trimmed.toLowerCase())
 
@@ -109,7 +111,7 @@ export function ExerciseForm({
       onSubmit={(ev) => {
         ev.preventDefault()
         if (!trimmed || duplicate) return
-        onCreated(addExercise(trimmed, group))
+        onCreated(addExercise(trimmed, group, measure))
       }}
     >
       <label className="field">
@@ -122,6 +124,13 @@ export function ExerciseForm({
           {MUSCLE_GROUPS.map((g) => (
             <option key={g}>{g}</option>
           ))}
+        </select>
+      </label>
+      <label className="field">
+        <span>Messen in</span>
+        <select id="new-exercise-measure" value={measure} onChange={(e) => setMeasure(e.target.value as Measure)}>
+          <option value="reps">Wiederholungen</option>
+          <option value="time">Sekunden (mit Countdown)</option>
         </select>
       </label>
       {duplicate && <p className="field-error">Eine Übung mit diesem Namen gibt es schon.</p>}

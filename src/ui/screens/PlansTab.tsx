@@ -3,8 +3,11 @@ import { ChevronDown, ChevronRight, ChevronUp, Minus, Plus, Trash2 } from 'lucid
 import {
   addPlanExercise,
   createPlan,
+  DEFAULT_TARGET,
+  DEFAULT_TIMED_TARGET,
   formatRest,
   formatTarget,
+  maxPerSet,
   movePlanExercise,
   planSetCount,
   removePlanExercise,
@@ -12,6 +15,7 @@ import {
   updatePlanExercise,
 } from '../../core/plans'
 import type { Plan, PlanExercise } from '../../core/types'
+import { isTimed } from '../../core/exercises'
 import { Sheet } from '../components/Sheet'
 import { useStore } from '../store'
 import { ExercisePicker } from './ExercisePicker'
@@ -153,9 +157,10 @@ function PlanEditor({ planId, onClose }: { planId: string | null; onClose: () =>
             key={pe.id}
             pe={pe}
             name={exerciseById.get(pe.exerciseId)?.name ?? 'Unbekannte Übung'}
+            timed={isTimed(exerciseById.get(pe.exerciseId))}
             first={i === 0}
             last={i === plan.exercises.length - 1}
-            onChange={(patch) => update(updatePlanExercise(plan, pe.id, patch))}
+            onChange={(patch) => update(updatePlanExercise(plan, pe.id, patch, isTimed(exerciseById.get(pe.exerciseId))))}
             onMove={(d) => update(movePlanExercise(plan, pe.id, d))}
             onRemove={() => update(removePlanExercise(plan, pe.id))}
           />
@@ -199,7 +204,7 @@ function PlanEditor({ planId, onClose }: { planId: string | null; onClose: () =>
       <ExercisePicker
         open={picking}
         onClose={() => setPicking(false)}
-        onPick={(id) => update(addPlanExercise(plan, id))}
+        onPick={(id) => update(addPlanExercise(plan, id, isTimed(exerciseById.get(id)) ? DEFAULT_TIMED_TARGET : DEFAULT_TARGET))}
       />
     </>
   )
@@ -208,6 +213,7 @@ function PlanEditor({ planId, onClose }: { planId: string | null; onClose: () =>
 function PlanExerciseRow({
   pe,
   name,
+  timed,
   first,
   last,
   onChange,
@@ -216,6 +222,7 @@ function PlanExerciseRow({
 }: {
   pe: PlanExercise
   name: string
+  timed: boolean
   first: boolean
   last: boolean
   onChange: (patch: Partial<PlanExercise>) => void
@@ -228,7 +235,7 @@ function PlanExerciseRow({
         <div className="row-main">
           <span className="row-title">{name}</span>
           <span className="row-sub">
-            {formatTarget(pe)} · Pause {formatRest(pe.restSec)}
+            {formatTarget(pe, timed)} · Pause {formatRest(pe.restSec)}
           </span>
         </div>
         <button className="icon-button small" aria-label={`${name} nach oben`} disabled={first} onClick={() => onMove(-1)}>
@@ -257,11 +264,11 @@ function PlanExerciseRow({
         </div>
 
         <div className="plan-field">
-          <span className="plan-label">Wdh</span>
+          <span className="plan-label">{timed ? 'Sek' : 'Wdh'}</span>
           <div className="range-inputs">
-            <RepInput id={`min-${pe.id}`} label={`${name}, Wiederholungen von`} value={pe.repMin} onCommit={(repMin) => onChange({ repMin, repMax: Math.max(repMin, pe.repMax) })} />
+            <RepInput id={`min-${pe.id}`} label={`${name}, ${timed ? 'Sekunden' : 'Wiederholungen'} von`} max={maxPerSet(timed)} value={pe.repMin} onCommit={(repMin) => onChange({ repMin, repMax: Math.max(repMin, pe.repMax) })} />
             <span aria-hidden="true">–</span>
-            <RepInput id={`max-${pe.id}`} label={`${name}, Wiederholungen bis`} value={pe.repMax} onCommit={(repMax) => onChange({ repMax })} />
+            <RepInput id={`max-${pe.id}`} label={`${name}, ${timed ? 'Sekunden' : 'Wiederholungen'} bis`} max={maxPerSet(timed)} value={pe.repMax} onCommit={(repMax) => onChange({ repMax })} />
           </div>
         </div>
 
@@ -281,7 +288,7 @@ function PlanExerciseRow({
 }
 
 /** Wiederholungsfeld, das erst beim Verlassen übernimmt, damit „12“ nicht als „1“ hängen bleibt. */
-function RepInput({ id, label, value, onCommit }: { id: string; label: string; value: number; onCommit: (v: number) => void }) {
+function RepInput({ id, label, value, max, onCommit }: { id: string; label: string; value: number; max: number; onCommit: (v: number) => void }) {
   const [text, setText] = useState<string | null>(null)
   return (
     <input
@@ -294,7 +301,7 @@ function RepInput({ id, label, value, onCommit }: { id: string; label: string; v
         setText(String(value))
         e.currentTarget.select()
       }}
-      onChange={(e) => setText(e.target.value.replace(/[^0-9]/g, '').slice(0, 2))}
+      onChange={(e) => setText(e.target.value.replace(/[^0-9]/g, '').slice(0, String(max).length))}
       onBlur={() => {
         const n = Number(text)
         if (text && n > 0) onCommit(n)

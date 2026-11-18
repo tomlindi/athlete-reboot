@@ -1,7 +1,9 @@
 import { startOfWeek } from './dates'
-import type { SetEntry, Workout } from './types'
+import type { ExerciseEntry, SetEntry, Workout } from './types'
 
 // Fortschritt: Bestwerte, geschätztes Maximum, Kraft-Index und Wochenvergleich. Reine Funktionen.
+// Zeit-Übungen (Eintrag mit `timed`) werten die längste Haltezeit statt des geschätzten Maximums
+// und zählen weder in den Kraft-Index noch ins Volumen.
 
 /** Geschätztes Maximalgewicht für 1 Wiederholung (Epley-Formel): kg × (1 + Wdh / 30). */
 export function e1rm(kg: number, reps: number): number {
@@ -13,6 +15,16 @@ function counts(s: SetEntry): s is SetEntry & { kg: number; reps: number } {
   return s.done && s.kg !== null && s.kg > 0 && s.reps !== null && s.reps > 0
 }
 
+/** Zeit-Satz zählt, wenn er erledigt ist und eine Zeit hat. Gewicht ist freiwillig. */
+function countsTimed(s: SetEntry): boolean {
+  return s.done && s.reps !== null && s.reps > 0
+}
+
+const countsIn = (e: ExerciseEntry) => (s: SetEntry) => (e.timed ? countsTimed(s) : counts(s))
+
+/** Bewertung eines Satzes: geschätztes Maximum, bei Zeit-Übungen die Sekunden. */
+const score = (e: ExerciseEntry, s: SetEntry) => (e.timed ? (s.reps ?? 0) : e1rm(s.kg ?? 0, s.reps ?? 0))
+
 const finished = (workouts: Workout[]) =>
   workouts.filter((w) => w.endedAt !== undefined).sort((a, b) => a.startedAt - b.startedAt)
 
@@ -20,8 +32,11 @@ export interface SessionBest {
   t: number
   workoutId: string
   kg: number
+  /** Wiederholungen, bei Zeit-Übungen Sekunden */
   reps: number
+  /** Geschätztes Maximum, bei Zeit-Übungen die Sekunden */
   e1rm: number
+  timed: boolean
 }
 
 /** Pro Training der beste Satz einer Übung (nach geschätztem Maximum), ältester zuerst. */
@@ -32,10 +47,11 @@ export function exerciseSessions(workouts: Workout[], exerciseId: string): Sessi
     for (const e of w.exercises) {
       if (e.exerciseId !== exerciseId) continue
       for (const s of e.sets) {
-        if (!counts(s)) continue
-        const v = e1rm(s.kg, s.reps)
-        if (!best || v > best.e1rm || (v === best.e1rm && s.kg > best.kg)) {
-          best = { t: w.startedAt, workoutId: w.id, kg: s.kg, reps: s.reps, e1rm: v }
+        if (!countsIn(e)(s)) continue
+        const v = score(e, s)
+        const kg = s.kg ?? 0
+        if (!best || v > best.e1rm || (v === best.e1rm && kg > best.kg)) {
+          best = { t: w.startedAt, workoutId: w.id, kg, reps: s.reps ?? 0, e1rm: v, timed: !!e.timed }
         }
       }
     }
@@ -51,7 +67,7 @@ export function bestSession(sessions: SessionBest[]): SessionBest | null {
 /** Alle Übungen mit mindestens einem gewerteten Satz. */
 export function trainedExerciseIds(workouts: Workout[]): string[] {
   const ids = new Set<string>()
-  for (const w of finished(workouts)) for (const e of w.exercises) if (e.sets.some(counts)) ids.add(e.exerciseId)
+  for (const w of finished(workouts)) for (const e of w.exercises) if (e.sets.some(countsIn(e))) ids.add(e.exerciseId)
   return [...ids]
 }
 
@@ -74,6 +90,7 @@ export function strengthIndex(workouts: Workout[]): IndexPoint[] {
     let changed = false
     const bestHere = new Map<string, number>()
     for (const e of w.exercises) {
+      if (e.timed) continue
       for (const s of e.sets) {
         if (!counts(s)) continue
         const v = e1rm(s.kg, s.reps)
@@ -108,7 +125,7 @@ function statsBetween(workouts: Workout[], from: number, to: number): WeekStats 
       for (const set of e.sets) {
         if (!set.done) continue
         s.sets++
-        s.volume += (set.kg ?? 0) * (set.reps ?? 0)
+        if (!e.timed) s.volume += (set.kg ?? 0) * (set.reps ?? 0)
       }
   }
   return s
@@ -130,6 +147,7 @@ export interface NewBest {
   kg: number
   reps: number
   e1rm: number
+  timed: boolean
 }
 
 /**
@@ -148,9 +166,10 @@ export function newBests(workout: Workout, history: Workout[]): NewBest[] {
     let best: NewBest | null = null
     for (const x of workout.exercises.filter((y) => y.exerciseId === e.exerciseId))
       for (const s of x.sets) {
-        if (!counts(s)) continue
-        const v = e1rm(s.kg, s.reps)
-        if (v > prev.e1rm + 1e-9 && (!best || v > best.e1rm)) best = { exerciseId: e.exerciseId, kg: s.kg, reps: s.reps, e1rm: v }
+        if (!countsIn(x)(s)) continue
+        const v = score(x, s)
+        if (v > prev.e1rm + 1e-9 && (!best || v > best.e1rm))
+          best = { exerciseId: e.exerciseId, kg: s.kg ?? 0, reps: s.reps ?? 0, e1rm: v, timed: !!x.timed }
       }
     if (best) out.push(best)
   }

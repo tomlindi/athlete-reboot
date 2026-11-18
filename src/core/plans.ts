@@ -5,6 +5,11 @@ import type { ExerciseEntry, Plan, PlanExercise, Rating, Target, Workout } from 
 // Trainingspläne: reine Funktionen, die immer einen neuen Plan zurückgeben.
 
 export const DEFAULT_TARGET: Target = { sets: 3, repMin: 8, repMax: 10, restSec: 120 }
+/** Vorgabe für Zeit-Übungen: 3 × 30–45 s mit 1:00 Pause */
+export const DEFAULT_TIMED_TARGET: Target = { sets: 3, repMin: 30, repMax: 45, restSec: 60 }
+
+/** Obergrenze für Wiederholungen bzw. Sekunden im Plan */
+export const maxPerSet = (timed: boolean) => (timed ? 600 : 50)
 
 /** Auswahl für die Pausenzeit im Plan. */
 export const REST_OPTIONS = [30, 45, 60, 75, 90, 105, 120, 150, 180, 210, 240, 300]
@@ -18,10 +23,10 @@ export function addPlanExercise(plan: Plan, exerciseId: string, target: Target =
   return { ...plan, exercises: [...plan.exercises, pe] }
 }
 
-export function updatePlanExercise(plan: Plan, id: string, patch: Partial<Target>): Plan {
+export function updatePlanExercise(plan: Plan, id: string, patch: Partial<Target>, timed = false): Plan {
   return {
     ...plan,
-    exercises: plan.exercises.map((e) => (e.id === id ? normalizeTarget({ ...e, ...patch }) : e)),
+    exercises: plan.exercises.map((e) => (e.id === id ? normalizeTarget({ ...e, ...patch }, timed) : e)),
   }
 }
 
@@ -39,12 +44,13 @@ export function movePlanExercise(plan: Plan, id: string, delta: -1 | 1): Plan {
   return { ...plan, exercises: list }
 }
 
-/** Hält die Werte in sinnvollen Grenzen: 1–10 Sätze, 1–50 Wdh, Minimum nie über Maximum. */
-export function normalizeTarget<T extends Target>(t: T): T {
+/** Hält die Werte in sinnvollen Grenzen: 1–10 Sätze, 1–50 Wdh (bzw. 1–600 s), Minimum nie über Maximum. */
+export function normalizeTarget<T extends Target>(t: T, timed = false): T {
   const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.round(n) || lo))
+  const top = maxPerSet(timed)
   const sets = clamp(t.sets, 1, 10)
-  const repMin = clamp(t.repMin, 1, 50)
-  const repMax = Math.max(repMin, clamp(t.repMax, 1, 50))
+  const repMin = clamp(t.repMin, 1, top)
+  const repMax = Math.max(repMin, clamp(t.repMax, 1, top))
   return { ...t, sets, repMin, repMax, restSec: clamp(t.restSec, 15, 600) }
 }
 
@@ -56,13 +62,19 @@ export function planSetCount(plan: Plan): number {
  * Startet ein Training aus einem Plan. Jede Übung bekommt so viele Sätze wie geplant,
  * vorbefüllt mit den Werten vom letzten Mal (Satz für Satz, sonst der letzte bekannte Satz).
  */
-export function workoutFromPlan(plan: Plan, history: Workout[], now = Date.now()): Workout {
+export function workoutFromPlan(
+  plan: Plan,
+  history: Workout[],
+  now = Date.now(),
+  isTimed: (exerciseId: string) => boolean = () => false,
+): Workout {
   const exercises: ExerciseEntry[] = plan.exercises.map((pe) => {
     const prev = previousSets(history, pe.exerciseId)
     const target: Target = { sets: pe.sets, repMin: pe.repMin, repMax: pe.repMax, restSec: pe.restSec }
     return {
       id: newId(),
       exerciseId: pe.exerciseId,
+      ...(isTimed(pe.exerciseId) ? { timed: true } : {}),
       target,
       sets: Array.from({ length: pe.sets }, (_, i) => {
         const p = prev[i] ?? prev[prev.length - 1]
@@ -103,9 +115,9 @@ export function suggestRating(w: Workout): { rating: Rating; hit: number; total:
   return { rating: hit * 2 >= planned.length ? 'good' : 'meh', hit, total: planned.length }
 }
 
-export function formatTarget(t: Pick<Target, 'sets' | 'repMin' | 'repMax'>): string {
+export function formatTarget(t: Pick<Target, 'sets' | 'repMin' | 'repMax'>, timed = false): string {
   const reps = t.repMin === t.repMax ? `${t.repMin}` : `${t.repMin}–${t.repMax}`
-  return `${t.sets} × ${reps}`
+  return `${t.sets} × ${reps}${timed ? ' s' : ''}`
 }
 
 export function formatRest(sec: number): string {

@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
-import { MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal, Play } from 'lucide-react'
+import { isTimed } from '../../core/exercises'
 import { formatClock, formatDuration } from '../../core/dates'
 import { formatRest, formatTarget, goalState, suggestRating } from '../../core/plans'
 import { newBests } from '../../core/progress'
 import {
   addExercise,
   addSet,
+  cancelHold,
   completeSet,
+  finishHold,
+  holdRemaining,
+  startHold,
   extendRest,
   failSet,
   restRemaining,
@@ -37,11 +42,11 @@ function useNow(intervalMs = 1000) {
 }
 
 export function WorkoutScreen({ workout }: { workout: Workout }) {
-  const { updateActive, data } = useStore()
+  const { updateActive, data, exerciseById } = useStore()
   const [picking, setPicking] = useState(false)
   const [finishing, setFinishing] = useState(false)
-  // Während einer Pause öfter aktualisieren, damit der Balken flüssig läuft
-  const now = useNow(workout.rest ? 250 : 1000)
+  // Während einer Pause oder eines Countdowns öfter aktualisieren, damit der Balken flüssig läuft
+  const now = useNow(workout.rest || workout.hold ? 250 : 1000)
 
   return (
     <>
@@ -53,6 +58,7 @@ export function WorkoutScreen({ workout }: { workout: Workout }) {
         <button className="button primary small" onClick={() => setFinishing(true)}>
           Beenden
         </button>
+        <HoldBar workout={workout} now={now} />
         <RestBar workout={workout} now={now} />
       </header>
 
@@ -84,7 +90,7 @@ export function WorkoutScreen({ workout }: { workout: Workout }) {
       <ExercisePicker
         open={picking}
         onClose={() => setPicking(false)}
-        onPick={(id) => updateActive((w) => addExercise(w, id, previousSets(data.workouts, id, w.id)))}
+        onPick={(id) => updateActive((w) => addExercise(w, id, previousSets(data.workouts, id, w.id), isTimed(exerciseById.get(id))))}
       />
 
       <FinishSheet open={finishing} workout={workout} onClose={() => setFinishing(false)} />
@@ -97,6 +103,7 @@ function ExerciseCard({ entry, previous }: { entry: ExerciseEntry; previous: Set
   const [menu, setMenu] = useState(false)
   const name = exerciseById.get(entry.exerciseId)?.name ?? 'Unbekannte Übung'
   const goal = goalState(entry)
+  const timed = !!entry.timed
 
   return (
     <section className="card glass exercise-card">
@@ -105,7 +112,7 @@ function ExerciseCard({ entry, previous }: { entry: ExerciseEntry; previous: Set
           <h2 className="card-title">{name}</h2>
           {entry.target && (
             <p className="exercise-target">
-              Ziel {formatTarget(entry.target)} · Pause {formatRest(entry.target.restSec)}
+              Ziel {formatTarget(entry.target, timed)} · Pause {formatRest(entry.target.restSec)}
             </p>
           )}
         </div>
@@ -130,8 +137,8 @@ function ExerciseCard({ entry, previous }: { entry: ExerciseEntry; previous: Set
         <span>Satz</span>
         <span>Letztes</span>
         <span>kg</span>
-        <span>Wdh</span>
-        <span className="center">✓</span>
+        <span>{timed ? 'Sek' : 'Wdh'}</span>
+        <span className="center">{timed ? '▶' : '✓'}</span>
       </div>
 
       {entry.sets.map((set, i) => (
@@ -142,6 +149,8 @@ function ExerciseCard({ entry, previous }: { entry: ExerciseEntry; previous: Set
           index={i}
           previous={previous[i]}
           exerciseName={name}
+          timed={timed}
+          planned={entry.target?.repMin}
           topReached={!!entry.target && set.done && (set.reps ?? 0) >= entry.target.repMax}
         />
       ))}
@@ -159,6 +168,8 @@ function SetRow({
   index,
   previous,
   exerciseName,
+  timed,
+  planned,
   topReached,
 }: {
   entryId: string
@@ -166,12 +177,16 @@ function SetRow({
   index: number
   previous?: SetEntry
   exerciseName: string
+  timed: boolean
+  /** Geplante Sekunden aus dem Plan, falls der Satz noch leer ist */
+  planned?: number
   /** Oberes Ende des Wiederholungsbereichs geschafft */
   topReached: boolean
 }) {
-  const { updateActive, data } = useStore()
+  const { updateActive, data, active } = useStore()
   const label = `${exerciseName}, Satz ${index + 1}`
   const restSec = data.settings.defaultRestSec
+  const holding = active?.hold?.setId === set.id
 
   return (
     <SwipeRow
@@ -185,7 +200,7 @@ function SetRow({
     >
       <div className="set-grid set-row">
         <span className="set-index">{index + 1}</span>
-        <span className="set-prev">{previous ? formatSet(previous) : '–'}</span>
+        <span className="set-prev">{previous ? formatSet(previous, timed) : '–'}</span>
         <NumberInput
           id={`kg-${set.id}`}
           label={`${label}, Kilogramm`}
@@ -196,20 +211,35 @@ function SetRow({
         <NumberInput
           id={`reps-${set.id}`}
           className={topReached ? 'top' : ''}
-          label={`${label}, Wiederholungen`}
+          label={`${label}, ${timed ? 'Sekunden' : 'Wiederholungen'}`}
           value={set.reps}
           onChange={(reps) => updateActive((w) => updateSet(w, entryId, set.id, { reps }))}
         />
-        <button
-          className={`check ${set.done ? 'on' : ''}`}
-          role="checkbox"
-          aria-checked={set.done}
-          aria-label={`${label} erledigt`}
-          onClick={() => {
-            unlockSound()
-            updateActive((w) => completeSet(w, entryId, set.id, restSec))
-          }}
-        />
+        {timed && !set.done ? (
+          <button
+            className={`check play ${holding ? 'running' : ''}`}
+            aria-label={holding ? `${label}: Countdown beenden` : `${label}: Countdown starten`}
+            onClick={() => {
+              unlockSound()
+              updateActive((w) =>
+                holding ? finishHold(w, restSec) : startHold(w, entryId, set.id, set.reps || planned || 30),
+              )
+            }}
+          >
+            {!holding && <Play strokeWidth={2.4} aria-hidden="true" />}
+          </button>
+        ) : (
+          <button
+            className={`check ${set.done ? 'on' : ''}`}
+            role="checkbox"
+            aria-checked={set.done}
+            aria-label={`${label} erledigt`}
+            onClick={() => {
+              unlockSound()
+              updateActive((w) => completeSet(w, entryId, set.id, restSec))
+            }}
+          />
+        )}
       </div>
     </SwipeRow>
   )
@@ -321,9 +351,7 @@ function FinishSheet({ open, workout, onClose }: { open: boolean; workout: Worko
                   <li key={b.exerciseId} className="list-row static">
                     <span className="row-main">{exerciseById.get(b.exerciseId)?.name ?? 'Übung'}</span>
                     <span className="best-value">
-                      <span className="is-new">
-                        {formatNumber(b.kg)} kg × {b.reps}
-                      </span>
+                      <span className="is-new">{b.timed ? formatSet(b, true) : `${formatNumber(b.kg)} kg × ${b.reps}`}</span>
                     </span>
                   </li>
                 ))}
@@ -375,6 +403,31 @@ function FinishSheet({ open, workout, onClose }: { open: boolean; workout: Worko
         </button>
       )}
     </Sheet>
+  )
+}
+
+/** Blaue Countdown-Leiste für Zeit-Übungen. „Fertig“ hakt den Satz mit der bisher gehaltenen Zeit ab. */
+function HoldBar({ workout, now }: { workout: Workout; now: number }) {
+  const { updateActive, data, exerciseById } = useStore()
+  const hold = workout.hold
+  const left = holdRemaining(workout, now)
+  if (!hold || left <= 0) return null
+  const progress = Math.min(1, Math.max(0, (now - hold.startedAt) / (hold.total * 1000)))
+  const entry = workout.exercises.find((e) => e.id === hold.entryId)
+  const name = (entry && exerciseById.get(entry.exerciseId)?.name) ?? 'Halten'
+
+  return (
+    <div className="rest-bar hold-bar" role="timer" aria-live="off" aria-label={`${name}, noch ${formatRest(left)}`}>
+      <div className="rest-progress" style={{ transform: `scaleX(${progress})` }} aria-hidden="true" />
+      <span className="rest-label">Halten</span>
+      <span className="rest-time">{formatRest(left)}</span>
+      <button className="rest-button" onClick={() => updateActive((w) => finishHold(w, data.settings.defaultRestSec))}>
+        Fertig
+      </button>
+      <button className="rest-button" onClick={() => updateActive(cancelHold)}>
+        Abbrechen
+      </button>
+    </div>
   )
 }
 

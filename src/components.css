@@ -1471,3 +1471,51 @@ body.sheet-open {
   overflow: visible;
   line-height: 1.25;
 }
+
+/* ---------- Countdown für Zeit-Übungen (Gym-Blau statt Pausen-Orange) ---------- */
+
+.hold-bar {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent-text);
+}
+
+.hold-bar .rest-progress {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+}
+
+.hold-bar .rest-button {
+  color: var(--accent-text);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.hold-bar .rest-time {
+  min-width: 3.2em;
+}
+
+/* Play-Knopf in der Satz-Zeile: gleicher Kreis wie der Haken, mit Dreieck */
+.check.play::before {
+  border-color: var(--accent);
+}
+
+.check.play svg {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  margin-left: 2px;
+  color: var(--accent-text);
+  fill: currentColor;
+}
+
+/* Läuft: gefüllter blauer Kreis mit weißem Stopp-Quadrat */
+.check.play.running::before {
+  background: var(--accent);
+}
+
+.check.play.running::after {
+  content: '';
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--on-accent);
+}

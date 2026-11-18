@@ -11,19 +11,24 @@ export function emptySet(prefill?: Pick<SetEntry, 'kg' | 'reps'>): SetEntry {
   return { id: newId(), kg: prefill?.kg ?? null, reps: prefill?.reps ?? null, done: false, failure: false }
 }
 
-/** Fügt eine Übung mit einem ersten Satz hinzu, vorbefüllt mit dem ersten Satz vom letzten Mal. */
-export function addExercise(w: Workout, exerciseId: string, previous: SetEntry[] = []): Workout {
+/**
+ * Fügt eine Übung mit einem ersten Satz hinzu, vorbefüllt mit dem ersten Satz vom letzten Mal.
+ * `timed`: Zeit-Übung, die Sätze speichern Sekunden statt Wiederholungen.
+ */
+export function addExercise(w: Workout, exerciseId: string, previous: SetEntry[] = [], timed = false): Workout {
   const first = previous[0]
   const entry: ExerciseEntry = {
     id: newId(),
     exerciseId,
+    ...(timed ? { timed: true } : {}),
     sets: [emptySet(first ? { kg: first.kg, reps: first.reps } : undefined)],
   }
   return { ...w, exercises: [...w.exercises, entry] }
 }
 
 export function removeExercise(w: Workout, entryId: string): Workout {
-  return { ...w, exercises: w.exercises.filter((e) => e.id !== entryId) }
+  const next = { ...w, exercises: w.exercises.filter((e) => e.id !== entryId) }
+  return w.hold?.entryId === entryId ? cancelHold(next) : next
 }
 
 function mapEntry(w: Workout, entryId: string, fn: (e: ExerciseEntry) => ExerciseEntry): Workout {
@@ -51,7 +56,8 @@ export function updateSet(w: Workout, entryId: string, setId: string, patch: Par
 }
 
 export function removeSet(w: Workout, entryId: string, setId: string): Workout {
-  return mapEntry(w, entryId, (e) => ({ ...e, sets: e.sets.filter((s) => s.id !== setId) }))
+  const next = mapEntry(w, entryId, (e) => ({ ...e, sets: e.sets.filter((s) => s.id !== setId) }))
+  return w.hold?.setId === setId ? cancelHold(next) : next
 }
 
 /** Haken setzen oder entfernen. */
@@ -118,7 +124,44 @@ export function failSet(w: Workout, entryId: string, setId: string, defaultRestS
   return startRest(next, target?.restSec ?? defaultRestSec, now)
 }
 
-/** Erledigte Sätze und Volumen (kg × Wdh) eines Trainings. */
+// ---------- Countdown für Zeit-Übungen ----------
+
+/**
+ * Startet den Countdown für einen Satz einer Zeit-Übung. Die geplante Zeit wird in den Satz
+ * geschrieben. Eine laufende Pause oder ein anderer Countdown wird beendet.
+ */
+export function startHold(w: Workout, entryId: string, setId: string, sec: number, now = Date.now()): Workout {
+  const total = Math.max(1, Math.round(sec))
+  const next = updateSet(stopRest(w), entryId, setId, { reps: total })
+  return { ...next, hold: { entryId, setId, startedAt: now, endsAt: now + total * 1000, total } }
+}
+
+export function cancelHold(w: Workout): Workout {
+  if (!w.hold) return w
+  const { hold: _hold, ...rest } = w
+  return rest
+}
+
+/** Verbleibende Haltezeit in Sekunden (aufgerundet). */
+export function holdRemaining(w: Workout, now = Date.now()): number {
+  return w.hold ? Math.max(0, Math.ceil((w.hold.endsAt - now) / 1000)) : 0
+}
+
+/**
+ * Beendet den Countdown: Der Satz wird abgehakt, mit der tatsächlich gehaltenen Zeit
+ * (bei vorzeitigem „Fertig“ weniger als geplant), und die Pause startet.
+ */
+export function finishHold(w: Workout, defaultRestSec: number, now = Date.now()): Workout {
+  const hold = w.hold
+  if (!hold) return w
+  const held = Math.min(hold.total, Math.max(1, Math.round((Math.min(now, hold.endsAt) - hold.startedAt) / 1000)))
+  let next = updateSet(cancelHold(w), hold.entryId, hold.setId, { reps: held })
+  const set = findSet(next, hold.entryId, hold.setId)
+  if (set && !set.done) next = completeSet(next, hold.entryId, hold.setId, defaultRestSec, now)
+  return next
+}
+
+/** Erledigte Sätze und Volumen (kg × Wdh) eines Trainings. Zeit-Übungen zählen nicht ins Volumen. */
 export function summarize(w: Workout): { sets: number; volume: number; exercises: number } {
   let sets = 0
   let volume = 0
@@ -126,7 +169,7 @@ export function summarize(w: Workout): { sets: number; volume: number; exercises
     for (const s of e.sets) {
       if (!s.done) continue
       sets++
-      volume += (s.kg ?? 0) * (s.reps ?? 0)
+      if (!e.timed) volume += (s.kg ?? 0) * (s.reps ?? 0)
     }
   }
   return { sets, volume, exercises: w.exercises.filter((e) => e.sets.some((s) => s.done)).length }
@@ -137,7 +180,7 @@ export function finishWorkout(w: Workout, rating: Workout['rating'], now = Date.
   const exercises = w.exercises
     .map((e) => ({ ...e, sets: e.sets.filter((s) => s.done) }))
     .filter((e) => e.sets.length > 0)
-  return { ...stopRest(w), exercises, rating, endedAt: now }
+  return { ...cancelHold(stopRest(w)), exercises, rating, endedAt: now }
 }
 
 /**
@@ -169,7 +212,9 @@ export function formatNumber(n: number | null): string {
   return n.toLocaleString('de-DE', { maximumFractionDigits: 2 })
 }
 
-export function formatSet(s: Pick<SetEntry, 'kg' | 'reps'>): string {
+/** „82,5 × 8“, bei Zeit-Übungen „30 s“ oder mit Zusatzgewicht „10 × 30 s“. */
+export function formatSet(s: Pick<SetEntry, 'kg' | 'reps'>, timed = false): string {
   if (s.kg === null && s.reps === null) return '–'
+  if (timed) return s.kg ? `${formatNumber(s.kg)} × ${s.reps ?? 0} s` : `${s.reps ?? 0} s`
   return `${formatNumber(s.kg ?? 0)} × ${s.reps ?? 0}`
 }

@@ -4,7 +4,8 @@ import { newId } from '../core/ids'
 import { mergeLifeDashboard, parseLifeDashboardExport, type ImportResult } from '../core/lifeDashboard'
 import { workoutFromPlan } from '../core/plans'
 import { createWorkout, finishWorkout } from '../core/workout'
-import type { Background, Backup, Exercise, MuscleGroup, Plan, Rating, Settings, Workout } from '../core/types'
+import { isTimed } from '../core/exercises'
+import type { Background, Backup, Exercise, Measure, MuscleGroup, Plan, Rating, Settings, Workout } from '../core/types'
 import * as db from '../storage/db'
 
 // Zentraler Zustand der App. Jede Änderung wird sofort auf dem Gerät gespeichert,
@@ -26,7 +27,7 @@ interface Store {
   discardActive: () => void
   deleteWorkout: (id: string) => void
   toggleRestDay: (date: string) => void
-  addExercise: (name: string, group: MuscleGroup) => Exercise
+  addExercise: (name: string, group: MuscleGroup, measure?: Measure) => Exercise
   setExerciseHidden: (id: string, hidden: boolean) => void
   setBackground: (bg: Background) => void
   updateSettings: (patch: Partial<Settings>) => void
@@ -105,7 +106,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       startPlan(planId) {
         if (currentActive()) return
         const plan = current().plans.find((p) => p.id === planId)
-        if (plan) putWorkout(workoutFromPlan(plan, current().workouts))
+        if (plan) putWorkout(workoutFromPlan(plan, current().workouts, Date.now(), (id) => isTimed(exerciseById.get(id))))
       },
 
       savePlan(plan) {
@@ -160,8 +161,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         db.setRestDay(date, !isRest).catch(report)
       },
 
-      addExercise(name, group) {
-        const e: Exercise = { id: `eigen-${newId()}`, name: name.trim(), group, custom: true }
+      addExercise(name, group, measure = 'reps') {
+        const e: Exercise = { id: `eigen-${newId()}`, name: name.trim(), group, custom: true, ...(measure === 'time' ? { measure } : {}) }
         const d = current()
         apply({ ...d, exercises: [...d.exercises, e] })
         db.saveExercise(e).catch(report)

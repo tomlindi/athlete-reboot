@@ -12,6 +12,11 @@ export type MuscleGroup =
   | 'Waden'
   | 'Bauch'
   | 'Sonstiges'
+  | 'Reha · Knie'
+  | 'Reha · Sprunggelenk & Achilles'
+  | 'Reha · Schulter'
+  | 'Reha · Hüfte & Rumpf'
+  | 'Reha · Ellbogen & Handgelenk'
 
 export const MUSCLE_GROUPS: MuscleGroup[] = [
   'Brust',
@@ -24,12 +29,22 @@ export const MUSCLE_GROUPS: MuscleGroup[] = [
   'Waden',
   'Bauch',
   'Sonstiges',
+  'Reha · Knie',
+  'Reha · Sprunggelenk & Achilles',
+  'Reha · Schulter',
+  'Reha · Hüfte & Rumpf',
+  'Reha · Ellbogen & Handgelenk',
 ]
+
+/** Wie eine Übung gemessen wird: Wiederholungen oder Haltezeit in Sekunden. */
+export type Measure = 'reps' | 'time'
 
 export interface Exercise {
   id: string
   name: string
   group: MuscleGroup
+  /** Fehlt = Wiederholungen */
+  measure?: Measure
   /** Von Tom selbst angelegt */
   custom?: boolean
   /** In der Auswahl ausgeblendet */
@@ -39,13 +54,14 @@ export interface Exercise {
 export interface SetEntry {
   id: string
   kg: number | null
+  /** Wiederholungen, bei Zeit-Übungen (Eintrag mit `timed`) die Haltezeit in Sekunden */
   reps: number | null
   done: boolean
   /** Muskelversagen erreicht */
   failure: boolean
 }
 
-/** Vorgabe aus dem Plan, z. B. 3 × 6–8 mit 3:00 Pause */
+/** Vorgabe aus dem Plan, z. B. 3 × 6–8 mit 3:00 Pause. Bei Zeit-Übungen sind repMin/repMax Sekunden. */
 export interface Target {
   sets: number
   repMin: number
@@ -56,6 +72,8 @@ export interface Target {
 export interface ExerciseEntry {
   id: string
   exerciseId: string
+  /** Zeit-Übung: `reps` der Sätze sind Sekunden. Beim Hinzufügen festgehalten, damit der Verlauf eindeutig bleibt. */
+  timed?: boolean
   sets: SetEntry[]
   /** Kopie der Plan-Vorgabe beim Start, damit spätere Planänderungen den Verlauf nicht verändern */
   target?: Target
@@ -91,11 +109,22 @@ export interface Workout {
   planId?: string
   /** Laufende Pause. Gespeichert als Endzeitpunkt, damit sie App-Wechsel und Neustart übersteht. */
   rest?: RestTimer
+  /** Laufender Countdown einer Zeit-Übung */
+  hold?: HoldTimer
 }
 
 export interface RestTimer {
   endsAt: number
   /** Gesamtlänge in Sekunden, für den Fortschrittsbalken */
+  total: number
+}
+
+export interface HoldTimer {
+  entryId: string
+  setId: string
+  startedAt: number
+  endsAt: number
+  /** Geplante Haltezeit in Sekunden */
   total: number
 }
 
