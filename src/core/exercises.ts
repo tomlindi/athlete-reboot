@@ -1,8 +1,9 @@
-import type { Exercise, Measure, MuscleGroup, Workout } from './types'
+import { entryFlag, entryMeasure, measureOf } from './measure'
+import type { Exercise, Level, Measure, MuscleGroup, Workout } from './types'
 
 // Startliste mit gängigen Übungen. Tom kann eigene hinzufügen und unnötige ausblenden.
 // Die IDs sind fest, damit Verlauf und Backups über App-Updates hinweg stimmen.
-const LIST: [string, string, MuscleGroup, Measure?][] = [
+const LIST: [string, string, MuscleGroup, Measure?, Level?][] = [
   ['bankdruecken', 'Bankdrücken', 'Brust'],
   ['schraegbank-lh', 'Schrägbankdrücken Langhantel', 'Brust'],
   ['schraegbank-kh', 'Schrägbankdrücken Kurzhantel', 'Brust'],
@@ -101,39 +102,96 @@ const LIST: [string, string, MuscleGroup, Measure?][] = [
   ['reha-handgelenkbeugung', 'Handgelenkbeugung', 'Reha · Ellbogen & Handgelenk'],
   ['reha-unterarm-drehen', 'Unterarm drehen mit Hantel', 'Reha · Ellbogen & Handgelenk'],
   ['reha-griffkraft', 'Griffkraft halten', 'Reha · Ellbogen & Handgelenk', 'time'],
+
+  // Athletik: Plyometrie, Rumpf, Explosiv & Hybrid, Isometrie. Stufe 1 Einsteiger bis 3 Fortgeschritten.
+  // Sprünge: eine Wiederholung = ein Bodenkontakt. Nach Kreuzband-OP nur stufenweise und mit Freigabe.
+  ['ply-landung-halten', 'Landung halten', 'Plyometrie', 'reps', 1],
+  ['ply-pogo', 'Pogo-Sprünge', 'Plyometrie', 'reps', 1],
+  ['ply-squat-jump', 'Squat Jump', 'Plyometrie', 'reps', 1],
+  ['ply-cmj', 'Countermovement Jump', 'Plyometrie', 'reps', 1],
+  ['ply-mb-brustwurf', 'Medizinball Brustwurf', 'Plyometrie', 'reps', 1],
+  ['ply-mb-slam', 'Medizinball Slam', 'Plyometrie', 'reps', 1],
+  ['ply-box-jump', 'Box Jump', 'Plyometrie', 'reps', 2],
+  ['ply-standweitsprung', 'Standweitsprung', 'Plyometrie', 'reps', 2],
+  ['ply-linien-spruenge', 'Seitliche Linien-Sprünge', 'Plyometrie', 'reps', 2],
+  ['ply-huerdenspruenge', 'Hürdensprünge', 'Plyometrie', 'reps', 2],
+  ['ply-mb-ueberkopf', 'Medizinball Überkopfwurf', 'Plyometrie', 'reps', 2],
+  ['ply-mb-rotation', 'Medizinball Rotationswurf', 'Plyometrie', 'reps', 2],
+  ['ply-einbeinige-hops', 'Einbeinige Hops', 'Plyometrie', 'reps', 3],
+  ['ply-skater', 'Skater Jumps', 'Plyometrie', 'reps', 3],
+  ['ply-bounds', 'Bounds', 'Plyometrie', 'reps', 3],
+  ['ply-tiefsprung', 'Tiefsprung', 'Plyometrie', 'reps', 3],
+
+  ['rumpf-pallof-hold', 'Pallof Hold', 'Rumpf', 'time', 1],
+  ['rumpf-hollow-hold', 'Hollow Hold', 'Rumpf', 'time', 1],
+  ['rumpf-farmers-walk', "Farmer's Walk", 'Rumpf', 'distance', 1],
+  ['rumpf-suitcase-carry', 'Suitcase Carry', 'Rumpf', 'distance', 1],
+  ['rumpf-pallof-press', 'Pallof Press', 'Rumpf', 'reps', 2],
+  ['rumpf-holzhacker', 'Kabel-Holzhacker', 'Rumpf', 'reps', 2],
+  ['rumpf-landmine-rotation', 'Landmine-Rotation', 'Rumpf', 'reps', 2],
+  ['rumpf-stir-the-pot', 'Stir the Pot', 'Rumpf', 'reps', 2],
+  ['rumpf-ab-wheel', 'Ab Wheel Rollout', 'Rumpf', 'reps', 3],
+
+  ['hyb-kb-swing', 'Kettlebell Swing', 'Explosiv & Hybrid', 'reps', 1],
+  ['hyb-burpee', 'Burpee', 'Explosiv & Hybrid', 'reps', 1],
+  ['hyb-wall-ball', 'Wall Ball', 'Explosiv & Hybrid', 'reps', 1],
+  ['hyb-sled-push', 'Sled Push', 'Explosiv & Hybrid', 'distance', 1],
+  ['hyb-trap-bar-sprung', 'Trap-Bar-Sprung', 'Explosiv & Hybrid', 'reps', 2],
+  ['hyb-jump-squat', 'Jump Squat mit Last', 'Explosiv & Hybrid', 'reps', 2],
+  ['hyb-thruster', 'Thruster', 'Explosiv & Hybrid', 'reps', 2],
+  ['hyb-push-press', 'Push Press', 'Explosiv & Hybrid', 'reps', 2],
+  ['hyb-kb-snatch', 'Kettlebell Snatch', 'Explosiv & Hybrid', 'reps', 3],
+  ['hyb-hang-clean', 'Hang Clean', 'Explosiv & Hybrid', 'reps', 3],
+  ['hyb-power-clean', 'Power Clean', 'Explosiv & Hybrid', 'reps', 3],
+
+  ['iso-kniebeuge', 'Iso-Kniebeuge', 'Isometrie', 'time', 1],
+  ['iso-split-squat', 'Iso-Split-Squat', 'Isometrie', 'time', 1],
+  ['iso-liegestuetz', 'Liegestütz unten halten', 'Isometrie', 'time', 1],
+  ['iso-toter-hang', 'Toter Hang', 'Isometrie', 'time', 1],
+  ['iso-klimmzug-oben', 'Klimmzug oben halten', 'Isometrie', 'time', 2],
+  ['iso-mid-thigh-pull', 'Isometrischer Mid-Thigh-Pull', 'Isometrie', 'time', 2],
+  ['iso-l-sit', 'L-Sit', 'Isometrie', 'time', 3],
 ]
 
-export const DEFAULT_EXERCISES: Exercise[] = LIST.map(([id, name, group, measure]) => (measure ? { id, name, group, measure } : { id, name, group }))
+export const DEFAULT_EXERCISES: Exercise[] = LIST.map(([id, name, group, measure, level]) => ({
+  id,
+  name,
+  group,
+  ...(measure && measure !== 'reps' ? { measure } : {}),
+  ...(level ? { level } : {}),
+}))
 
 const DEFAULT_BY_ID = new Map(DEFAULT_EXERCISES.map((e) => [e.id, e]))
 
-export const isTimed = (e: Pick<Exercise, 'measure'> | undefined) => e?.measure === 'time'
+export const isTimed = (e: Pick<Exercise, 'measure'> | undefined) => measureOf(e) === 'time'
 
 /**
  * Ergänzt fehlende Standard-Übungen (z. B. nach einem App-Update), ohne Toms Änderungen zu überschreiben.
- * Die Messart der Standard-Übungen kommt immer aus der App (z. B. Plank wurde zur Zeit-Übung).
+ * Messart und Stufe der Standard-Übungen kommen immer aus der App (z. B. Plank wurde zur Zeit-Übung).
  */
 export function mergeDefaultExercises(existing: Exercise[]): Exercise[] {
   const known = new Set(existing.map((e) => e.id))
   const updated = existing.map((e) => {
     const d = DEFAULT_BY_ID.get(e.id)
-    if (!d || d.measure === e.measure) return e
-    const { measure: _old, ...rest } = e
-    return d.measure ? { ...rest, measure: d.measure } : rest
+    if (!d || (d.measure === e.measure && d.level === e.level)) return e
+    const { measure: _m, level: _l, ...rest } = e
+    return { ...rest, ...(d.measure ? { measure: d.measure } : {}), ...(d.level ? { level: d.level } : {}) }
   })
   return [...updated, ...DEFAULT_EXERCISES.filter((e) => !known.has(e.id))]
 }
 
 /**
- * Markiert Einträge von Zeit-Übungen in gespeicherten Trainings (z. B. alte Plank-Sätze,
+ * Markiert Einträge von Zeit- und Strecken-Übungen in gespeicherten Trainings (z. B. alte Plank-Sätze,
  * die vor der Umstellung als Wiederholungen gespeichert wurden). Gibt nur geänderte Trainings zurück.
+ * Bereits markierte Einträge bleiben, wie sie sind.
  */
 export function markTimedEntries(workouts: Workout[], exercises: Exercise[]): Workout[] {
-  const timed = new Set(exercises.filter(isTimed).map((e) => e.id))
+  const measures = new Map(exercises.filter((e) => measureOf(e) !== 'reps').map((e) => [e.id, measureOf(e)]))
+  const needs = (e: Workout['exercises'][number]) => measures.has(e.exerciseId) && entryMeasure(e) === 'reps'
   const changed: Workout[] = []
   for (const w of workouts) {
-    if (!w.exercises.some((e) => timed.has(e.exerciseId) && !e.timed)) continue
-    changed.push({ ...w, exercises: w.exercises.map((e) => (timed.has(e.exerciseId) && !e.timed ? { ...e, timed: true } : e)) })
+    if (!w.exercises.some(needs)) continue
+    changed.push({ ...w, exercises: w.exercises.map((e) => (needs(e) ? { ...e, ...entryFlag(measures.get(e.exerciseId)!) } : e)) })
   }
   return changed
 }

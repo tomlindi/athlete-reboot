@@ -4,7 +4,7 @@ import { newId } from '../core/ids'
 import { mergeLifeDashboard, parseLifeDashboardExport, type ImportResult } from '../core/lifeDashboard'
 import { workoutFromPlan } from '../core/plans'
 import { createWorkout, finishWorkout } from '../core/workout'
-import { isTimed } from '../core/exercises'
+import { measureOf } from '../core/measure'
 import type { Background, Backup, Exercise, Measure, MuscleGroup, Plan, Rating, Settings, Workout } from '../core/types'
 import * as db from '../storage/db'
 
@@ -106,7 +106,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       startPlan(planId) {
         if (currentActive()) return
         const plan = current().plans.find((p) => p.id === planId)
-        if (plan) putWorkout(workoutFromPlan(plan, current().workouts, Date.now(), (id) => isTimed(exerciseById.get(id))))
+        if (plan) putWorkout(workoutFromPlan(plan, current().workouts, Date.now(), (id) => measureOf(exerciseById.get(id))))
       },
 
       savePlan(plan) {

@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react'
-import { isTimed, matchesSearch } from '../../core/exercises'
-import { MUSCLE_GROUPS, type Exercise, type Measure, type MuscleGroup } from '../../core/types'
+import { matchesSearch } from '../../core/exercises'
+import { measureOf } from '../../core/measure'
+import { LEVEL_LABEL, MUSCLE_GROUPS, type Exercise, type Measure, type MuscleGroup } from '../../core/types'
 import { Sheet } from '../components/Sheet'
 import { useStore } from '../store'
 
-/** Übungen nach Muskelgruppe gruppiert, gefiltert nach Suche. */
+/** Übungen nach Muskelgruppe gruppiert, gefiltert nach Suche. Innerhalb der Gruppe nach Stufe, dann nach Name. */
 export function groupExercises(list: Exercise[], query: string) {
   const filtered = list.filter((e) => matchesSearch(e, query))
   return MUSCLE_GROUPS.map((g) => ({
     group: g,
-    items: filtered.filter((e) => e.group === g).sort((a, b) => a.name.localeCompare(b.name, 'de')),
+    items: filtered.filter((e) => e.group === g).sort((a, b) => (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name, 'de')),
   })).filter((g) => g.items.length > 0)
 }
 
@@ -77,7 +78,18 @@ export function ExercisePicker({
                   }}
                 >
                   <span>{e.name}</span>
-                  {isTimed(e) && <span className="row-meta">Sekunden</span>}
+                  {measureOf(e) === 'time' && <span className="row-meta">Sekunden</span>}
+                  {measureOf(e) === 'distance' && <span className="row-meta">Meter</span>}
+                  {e.level && (
+                    <span className="level-chip">
+                      <span className="level-bars" aria-hidden="true">
+                        {[1, 2, 3].map((n) => (
+                          <span key={n} className={n <= e.level! ? 'on' : ''} />
+                        ))}
+                      </span>
+                      {LEVEL_LABEL[e.level]}
+                    </span>
+                  )}
                   {e.custom && <span className="row-meta">Eigene</span>}
                 </button>
               </li>
@@ -131,6 +143,7 @@ export function ExerciseForm({
         <select id="new-exercise-measure" value={measure} onChange={(e) => setMeasure(e.target.value as Measure)}>
           <option value="reps">Wiederholungen</option>
           <option value="time">Sekunden (mit Countdown)</option>
+          <option value="distance">Meter</option>
         </select>
       </label>
       {duplicate && <p className="field-error">Eine Übung mit diesem Namen gibt es schon.</p>}

@@ -1519,3 +1519,37 @@ body.sheet-open {
   border-radius: 2px;
   background: var(--on-accent);
 }
+
+/* ---------- Stufe einer Übung (Einsteiger / Mittel / Fortgeschritten) ---------- */
+/* Text in Sekundärfarbe, die Balken tragen die Stufe. Kein Grün/Orange/Rot: die sind für Status reserviert. */
+
+.level-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.level-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+
+.level-bars span {
+  width: 3px;
+  border-radius: 1.5px;
+  background: color-mix(in srgb, var(--text-secondary) 35%, transparent);
+}
+
+.level-bars span:nth-child(1) { height: 5px; }
+.level-bars span:nth-child(2) { height: 8px; }
+.level-bars span:nth-child(3) { height: 12px; }
+
+.level-bars span.on {
+  background: var(--accent);
+}

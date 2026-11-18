@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { dateKey, formatDuration, monthGrid, startOfWeek, weekLabel } from '../../core/dates'
 import { formatNumber, formatSet, summarize } from '../../core/workout'
+import { entryMeasure } from '../../core/measure'
 import type { Workout } from '../../core/types'
 import { Segmented } from '../components/Segmented'
 import { Sheet } from '../components/Sheet'
@@ -217,7 +218,7 @@ function WorkoutDetail({ workout, onClose }: { workout: Workout | undefined; onC
             {e.sets.map((set, i) => (
               <li key={set.id} className={`list-row static ${set.failure ? 'is-failure' : ''}`}>
                 <span className="row-meta">Satz {i + 1}</span>
-                <span className="row-main">{formatSet(set, e.timed)}</span>
+                <span className="row-main">{formatSet(set, entryMeasure(e))}</span>
                 {set.failure && <span className="failure-tag">Muskelversagen</span>}
               </li>
             ))}

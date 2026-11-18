@@ -12,6 +12,7 @@ import {
   type WeekStats,
 } from '../../core/progress'
 import { formatNumber, formatSet } from '../../core/workout'
+import type { Measure } from '../../core/types'
 import { LineChart } from '../components/LineChart'
 import { Segmented } from '../components/Segmented'
 import { Sheet } from '../components/Sheet'
@@ -23,8 +24,17 @@ const monthOnly = new Intl.DateTimeFormat('de-DE', { month: 'short' })
 const axisDate = (range: Range) => (t: number) => (range === 'J' ? monthOnly.format(t) : shortDate.format(t))
 const kg = (v: number) => `${formatNumber(Math.round(v * 10) / 10)} kg`
 const pct = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${formatNumber(Math.abs(Math.round(v * 10) / 10))} %`
-const setText = (s: Pick<SessionBest, 'kg' | 'reps' | 'timed'>) => (s.timed ? formatSet(s, true) : `${formatNumber(s.kg)} kg × ${s.reps}`)
+const setText = (s: Pick<SessionBest, 'kg' | 'reps' | 'measure'>) =>
+  s.measure !== 'reps' ? formatSet(s, s.measure) : `${formatNumber(s.kg)} kg × ${s.reps}`
 const seconds = (v: number) => `${formatNumber(Math.round(v))} s`
+const meters = (v: number) => `${formatNumber(Math.round(v))} m`
+
+/** Wie der Bestwert einer Übung angezeigt wird: geschätztes Maximum, längste Zeit oder längste Strecke. */
+const BEST: Record<Measure, { label: string; format: (v: number) => string; chart: string; unit: string }> = {
+  reps: { label: 'Geschätztes Max.', format: kg, chart: 'Geschätztes Maximum für eine Wiederholung, bester Satz pro Training', unit: 'geschätztes Maximum in Kilogramm' },
+  time: { label: 'Längste Zeit', format: seconds, chart: 'Längste Zeit pro Training', unit: 'längste Zeit in Sekunden' },
+  distance: { label: 'Längste Strecke', format: meters, chart: 'Längste Strecke pro Training', unit: 'längste Strecke in Metern' },
+}
 
 export function ProgressTab() {
   const [openId, setOpenId] = useState<string | null>(null)
@@ -156,7 +166,7 @@ function ExerciseList({ onOpen }: { onOpen: (id: string) => void }) {
             <button className="list-row two-line" onClick={() => onOpen(r.id)}>
               <span className="row-main">
                 <span className="row-title">{exerciseById.get(r.id)?.name ?? 'Unbekannte Übung'}</span>
-                <span className="row-sub">{r.best.timed ? 'Längste Zeit' : `Geschätztes Maximum ${kg(r.best.e1rm)}`}</span>
+                <span className="row-sub">{r.best.measure === 'reps' ? `Geschätztes Maximum ${kg(r.best.e1rm)}` : BEST[r.best.measure].label}</span>
               </span>
               <span className="best-value">
                 <span className={r.isNew ? 'is-new' : ''}>{setText(r.best)}</span>
@@ -167,7 +177,7 @@ function ExerciseList({ onOpen }: { onOpen: (id: string) => void }) {
           </li>
         ))}
       </ul>
-      <p className="hint">Bestwert = Satz mit dem höchsten geschätzten Maximum für eine Wiederholung (Epley-Formel), bei Zeit-Übungen die längste Zeit.</p>
+      <p className="hint">Bestwert = Satz mit dem höchsten geschätzten Maximum für eine Wiederholung (Epley-Formel), bei Zeit- und Strecken-Übungen die längste Zeit bzw. Strecke.</p>
     </section>
   )
 }
@@ -183,7 +193,7 @@ function ExerciseProgress({ exerciseId, onClose }: { exerciseId: string | null; 
   const now = Date.now()
   const from = rangeStart(range, now)
   const points = sessions.filter((s) => s.t >= from).map((s) => ({ t: s.t, v: s.e1rm }))
-  const timed = !!best?.timed
+  const show = BEST[best?.measure ?? 'reps']
 
   return (
     <Sheet open title={name} onClose={onClose}>
@@ -193,8 +203,8 @@ function ExerciseProgress({ exerciseId, onClose }: { exerciseId: string | null; 
           <span className="stat-label">Bestwert</span>
         </div>
         <div className="stat">
-          <span className="stat-value">{best ? (timed ? seconds(best.e1rm) : kg(best.e1rm)) : '–'}</span>
-          <span className="stat-label">{timed ? 'Längste Zeit' : 'Geschätztes Max.'}</span>
+          <span className="stat-value">{best ? show.format(best.e1rm) : '–'}</span>
+          <span className="stat-label">{show.label}</span>
         </div>
         <div className="stat">
           <span className="stat-value">{latest ? setText(latest) : '–'}</span>
@@ -212,7 +222,7 @@ function ExerciseProgress({ exerciseId, onClose }: { exerciseId: string | null; 
           { value: 'J', label: 'Jahr' },
         ]}
       />
-      <p className="card-sub">{timed ? 'Längste Zeit pro Training' : 'Geschätztes Maximum für eine Wiederholung, bester Satz pro Training'}</p>
+      <p className="card-sub">{show.chart}</p>
       {points.length === 0 ? (
         <p className="empty-text">In diesem Zeitraum hast du {name} nicht trainiert.</p>
       ) : (
@@ -220,8 +230,8 @@ function ExerciseProgress({ exerciseId, onClose }: { exerciseId: string | null; 
           points={points}
           from={from}
           to={now}
-          label={timed ? `${name}, längste Zeit in Sekunden` : `${name}, geschätztes Maximum in Kilogramm`}
-          formatValue={timed ? seconds : kg}
+          label={`${name}, ${show.unit}`}
+          formatValue={show.format}
           formatTick={(v) => formatNumber(v)}
           formatDate={(t) => (range === 'J' ? monthOnly.format(t) : shortDate.format(t))}
           listLabel="Alle Trainings als Liste"

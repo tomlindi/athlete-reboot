@@ -12,6 +12,10 @@ export type MuscleGroup =
   | 'Waden'
   | 'Bauch'
   | 'Sonstiges'
+  | 'Plyometrie'
+  | 'Rumpf'
+  | 'Explosiv & Hybrid'
+  | 'Isometrie'
   | 'Reha · Knie'
   | 'Reha · Sprunggelenk & Achilles'
   | 'Reha · Schulter'
@@ -29,6 +33,10 @@ export const MUSCLE_GROUPS: MuscleGroup[] = [
   'Waden',
   'Bauch',
   'Sonstiges',
+  'Plyometrie',
+  'Rumpf',
+  'Explosiv & Hybrid',
+  'Isometrie',
   'Reha · Knie',
   'Reha · Sprunggelenk & Achilles',
   'Reha · Schulter',
@@ -36,8 +44,13 @@ export const MUSCLE_GROUPS: MuscleGroup[] = [
   'Reha · Ellbogen & Handgelenk',
 ]
 
-/** Wie eine Übung gemessen wird: Wiederholungen oder Haltezeit in Sekunden. */
-export type Measure = 'reps' | 'time'
+/** Wie eine Übung gemessen wird: Wiederholungen, Haltezeit in Sekunden oder Strecke in Metern. */
+export type Measure = 'reps' | 'time' | 'distance'
+
+/** Schwierigkeit: 1 Einsteiger, 2 Mittel, 3 Fortgeschritten */
+export type Level = 1 | 2 | 3
+
+export const LEVEL_LABEL: Record<Level, string> = { 1: 'Einsteiger', 2: 'Mittel', 3: 'Fortgeschritten' }
 
 export interface Exercise {
   id: string
@@ -45,6 +58,8 @@ export interface Exercise {
   group: MuscleGroup
   /** Fehlt = Wiederholungen */
   measure?: Measure
+  /** Stufe, nur bei Übungen mit Progression (z. B. Plyometrie) */
+  level?: Level
   /** Von Tom selbst angelegt */
   custom?: boolean
   /** In der Auswahl ausgeblendet */
@@ -54,14 +69,14 @@ export interface Exercise {
 export interface SetEntry {
   id: string
   kg: number | null
-  /** Wiederholungen, bei Zeit-Übungen (Eintrag mit `timed`) die Haltezeit in Sekunden */
+  /** Wiederholungen, bei Zeit-Übungen (`timed`) Sekunden, bei Strecken-Übungen (`distance`) Meter */
   reps: number | null
   done: boolean
   /** Muskelversagen erreicht */
   failure: boolean
 }
 
-/** Vorgabe aus dem Plan, z. B. 3 × 6–8 mit 3:00 Pause. Bei Zeit-Übungen sind repMin/repMax Sekunden. */
+/** Vorgabe aus dem Plan, z. B. 3 × 6–8 mit 3:00 Pause. Bei Zeit-/Strecken-Übungen sind repMin/repMax Sekunden bzw. Meter. */
 export interface Target {
   sets: number
   repMin: number
@@ -74,6 +89,8 @@ export interface ExerciseEntry {
   exerciseId: string
   /** Zeit-Übung: `reps` der Sätze sind Sekunden. Beim Hinzufügen festgehalten, damit der Verlauf eindeutig bleibt. */
   timed?: boolean
+  /** Strecken-Übung: `reps` der Sätze sind Meter */
+  distance?: boolean
   sets: SetEntry[]
   /** Kopie der Plan-Vorgabe beim Start, damit spätere Planänderungen den Verlauf nicht verändern */
   target?: Target

@@ -1,5 +1,6 @@
 import { newId } from './ids'
-import type { ExerciseEntry, SetEntry, Workout } from './types'
+import { entryFlag, entryMeasure, MEASURE_UNIT } from './measure'
+import type { ExerciseEntry, Measure, SetEntry, Workout } from './types'
 
 // Reine Funktionen: Sie verändern nichts, sondern geben immer ein neues Training zurück.
 
@@ -13,14 +14,14 @@ export function emptySet(prefill?: Pick<SetEntry, 'kg' | 'reps'>): SetEntry {
 
 /**
  * Fügt eine Übung mit einem ersten Satz hinzu, vorbefüllt mit dem ersten Satz vom letzten Mal.
- * `timed`: Zeit-Übung, die Sätze speichern Sekunden statt Wiederholungen.
+ * `measure`: Bei Zeit- und Strecken-Übungen speichern die Sätze Sekunden bzw. Meter statt Wiederholungen.
  */
-export function addExercise(w: Workout, exerciseId: string, previous: SetEntry[] = [], timed = false): Workout {
+export function addExercise(w: Workout, exerciseId: string, previous: SetEntry[] = [], measure: Measure = 'reps'): Workout {
   const first = previous[0]
   const entry: ExerciseEntry = {
     id: newId(),
     exerciseId,
-    ...(timed ? { timed: true } : {}),
+    ...entryFlag(measure),
     sets: [emptySet(first ? { kg: first.kg, reps: first.reps } : undefined)],
   }
   return { ...w, exercises: [...w.exercises, entry] }
@@ -161,7 +162,7 @@ export function finishHold(w: Workout, defaultRestSec: number, now = Date.now())
   return next
 }
 
-/** Erledigte Sätze und Volumen (kg × Wdh) eines Trainings. Zeit-Übungen zählen nicht ins Volumen. */
+/** Erledigte Sätze und Volumen (kg × Wdh) eines Trainings. Zeit- und Strecken-Übungen zählen nicht ins Volumen. */
 export function summarize(w: Workout): { sets: number; volume: number; exercises: number } {
   let sets = 0
   let volume = 0
@@ -169,7 +170,7 @@ export function summarize(w: Workout): { sets: number; volume: number; exercises
     for (const s of e.sets) {
       if (!s.done) continue
       sets++
-      if (!e.timed) volume += (s.kg ?? 0) * (s.reps ?? 0)
+      if (entryMeasure(e) === 'reps') volume += (s.kg ?? 0) * (s.reps ?? 0)
     }
   }
   return { sets, volume, exercises: w.exercises.filter((e) => e.sets.some((s) => s.done)).length }
@@ -212,9 +213,12 @@ export function formatNumber(n: number | null): string {
   return n.toLocaleString('de-DE', { maximumFractionDigits: 2 })
 }
 
-/** „82,5 × 8“, bei Zeit-Übungen „30 s“ oder mit Zusatzgewicht „10 × 30 s“. */
-export function formatSet(s: Pick<SetEntry, 'kg' | 'reps'>, timed = false): string {
+/** „82,5 × 8“, bei Zeit-Übungen „30 s“, bei Strecken „40 m“, mit Zusatzgewicht „24 × 40 m“. */
+export function formatSet(s: Pick<SetEntry, 'kg' | 'reps'>, measure: Measure = 'reps'): string {
   if (s.kg === null && s.reps === null) return '–'
-  if (timed) return s.kg ? `${formatNumber(s.kg)} × ${s.reps ?? 0} s` : `${s.reps ?? 0} s`
+  if (measure !== 'reps') {
+    const value = `${s.reps ?? 0}${MEASURE_UNIT[measure]}`
+    return s.kg ? `${formatNumber(s.kg)} × ${value}` : value
+  }
   return `${formatNumber(s.kg ?? 0)} × ${s.reps ?? 0}`
 }

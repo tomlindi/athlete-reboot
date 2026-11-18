@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { MoreHorizontal, Play } from 'lucide-react'
-import { isTimed } from '../../core/exercises'
+import { entryMeasure, MEASURE_LONG, MEASURE_SHORT, measureOf } from '../../core/measure'
 import { formatClock, formatDuration } from '../../core/dates'
 import { formatRest, formatTarget, goalState, suggestRating } from '../../core/plans'
 import { newBests } from '../../core/progress'
@@ -25,7 +25,7 @@ import {
   summarize,
   updateSet,
 } from '../../core/workout'
-import type { ExerciseEntry, Rating, SetEntry, Workout } from '../../core/types'
+import type { ExerciseEntry, Measure, Rating, SetEntry, Workout } from '../../core/types'
 import { Sheet } from '../components/Sheet'
 import { SwipeRow } from '../components/SwipeRow'
 import { useStore } from '../store'
@@ -90,7 +90,7 @@ export function WorkoutScreen({ workout }: { workout: Workout }) {
       <ExercisePicker
         open={picking}
         onClose={() => setPicking(false)}
-        onPick={(id) => updateActive((w) => addExercise(w, id, previousSets(data.workouts, id, w.id), isTimed(exerciseById.get(id))))}
+        onPick={(id) => updateActive((w) => addExercise(w, id, previousSets(data.workouts, id, w.id), measureOf(exerciseById.get(id))))}
       />
 
       <FinishSheet open={finishing} workout={workout} onClose={() => setFinishing(false)} />
@@ -103,7 +103,8 @@ function ExerciseCard({ entry, previous }: { entry: ExerciseEntry; previous: Set
   const [menu, setMenu] = useState(false)
   const name = exerciseById.get(entry.exerciseId)?.name ?? 'Unbekannte Übung'
   const goal = goalState(entry)
-  const timed = !!entry.timed
+  const measure = entryMeasure(entry)
+  const timed = measure === 'time'
 
   return (
     <section className="card glass exercise-card">
@@ -112,7 +113,7 @@ function ExerciseCard({ entry, previous }: { entry: ExerciseEntry; previous: Set
           <h2 className="card-title">{name}</h2>
           {entry.target && (
             <p className="exercise-target">
-              Ziel {formatTarget(entry.target, timed)} · Pause {formatRest(entry.target.restSec)}
+              Ziel {formatTarget(entry.target, measure)} · Pause {formatRest(entry.target.restSec)}
             </p>
           )}
         </div>
@@ -137,7 +138,7 @@ function ExerciseCard({ entry, previous }: { entry: ExerciseEntry; previous: Set
         <span>Satz</span>
         <span>Letztes</span>
         <span>kg</span>
-        <span>{timed ? 'Sek' : 'Wdh'}</span>
+        <span>{MEASURE_SHORT[measure]}</span>
         <span className="center">{timed ? '▶' : '✓'}</span>
       </div>
 
@@ -149,7 +150,7 @@ function ExerciseCard({ entry, previous }: { entry: ExerciseEntry; previous: Set
           index={i}
           previous={previous[i]}
           exerciseName={name}
-          timed={timed}
+          measure={measure}
           planned={entry.target?.repMin}
           topReached={!!entry.target && set.done && (set.reps ?? 0) >= entry.target.repMax}
         />
@@ -168,7 +169,7 @@ function SetRow({
   index,
   previous,
   exerciseName,
-  timed,
+  measure,
   planned,
   topReached,
 }: {
@@ -177,7 +178,7 @@ function SetRow({
   index: number
   previous?: SetEntry
   exerciseName: string
-  timed: boolean
+  measure: Measure
   /** Geplante Sekunden aus dem Plan, falls der Satz noch leer ist */
   planned?: number
   /** Oberes Ende des Wiederholungsbereichs geschafft */
@@ -187,6 +188,7 @@ function SetRow({
   const label = `${exerciseName}, Satz ${index + 1}`
   const restSec = data.settings.defaultRestSec
   const holding = active?.hold?.setId === set.id
+  const timed = measure === 'time'
 
   return (
     <SwipeRow
@@ -200,7 +202,7 @@ function SetRow({
     >
       <div className="set-grid set-row">
         <span className="set-index">{index + 1}</span>
-        <span className="set-prev">{previous ? formatSet(previous, timed) : '–'}</span>
+        <span className="set-prev">{previous ? formatSet(previous, measure) : '–'}</span>
         <NumberInput
           id={`kg-${set.id}`}
           label={`${label}, Kilogramm`}
@@ -211,7 +213,7 @@ function SetRow({
         <NumberInput
           id={`reps-${set.id}`}
           className={topReached ? 'top' : ''}
-          label={`${label}, ${timed ? 'Sekunden' : 'Wiederholungen'}`}
+          label={`${label}, ${MEASURE_LONG[measure]}`}
           value={set.reps}
           onChange={(reps) => updateActive((w) => updateSet(w, entryId, set.id, { reps }))}
         />
@@ -351,7 +353,7 @@ function FinishSheet({ open, workout, onClose }: { open: boolean; workout: Worko
                   <li key={b.exerciseId} className="list-row static">
                     <span className="row-main">{exerciseById.get(b.exerciseId)?.name ?? 'Übung'}</span>
                     <span className="best-value">
-                      <span className="is-new">{b.timed ? formatSet(b, true) : `${formatNumber(b.kg)} kg × ${b.reps}`}</span>
+                      <span className="is-new">{b.measure !== 'reps' ? formatSet(b, b.measure) : `${formatNumber(b.kg)} kg × ${b.reps}`}</span>
                     </span>
                   </li>
                 ))}
