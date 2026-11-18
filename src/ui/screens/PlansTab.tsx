@@ -19,7 +19,6 @@ import { lastSport } from '../../core/cardio'
 import { Segmented } from '../components/Segmented'
 import { CardioPlanEditor } from './CardioPlanEditor'
 import { ProgramsView } from './ProgramsView'
-import { PlanImportButton } from './PlanImportSheet'
 import { MEASURE_LONG, MEASURE_MAX, MEASURE_SHORT, measureOf } from '../../core/measure'
 import { Sheet } from '../components/Sheet'
 import { useStore } from '../store'
@@ -188,7 +187,6 @@ export function PlansTab() {
       <>
         {switcher}
         <ProgramsView />
-        <PlanImportButton />
       </>
     )
   }
@@ -200,11 +198,7 @@ export function PlansTab() {
         {view === 'cardio' ? '+ Neuer Ausdauer-Plan' : '+ Neuer Plan'}
       </button>
       <PlanList kind={view} onEdit={setEditing} />
-      {plansOfKind(data.plans, view).length > 0 && (
-        <p className="hint">Tippe auf einen Plan, um ihn zu bearbeiten. Am Griff ≡ ziehst du ihn an eine andere Stelle.</p>
-      )}
       <HiddenPlans kind={view} onEdit={setEditing} />
-      <PlanImportButton />
 
       <NewPlanSheet
         open={creating}
@@ -312,11 +306,6 @@ function PlanEditor({ planId, onClose }: { planId: string | null; onClose: () =>
           + Übung hinzufügen
         </button>
 
-        {plan.exercises.length > 0 && (
-          <p className="hint">
-            {plan.exercises.length} Übungen · {planSetCount(plan)} Sätze. Schaffst du in allen Sätzen das obere Ende, zeigt das Training „Ziel geschafft“: Zeit für mehr Gewicht.
-          </p>
-        )}
 
         <HidePlanButton plan={plan} onHidden={close} />
 

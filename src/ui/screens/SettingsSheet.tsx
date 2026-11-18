@@ -6,10 +6,12 @@ import { formatRest, REST_OPTIONS } from '../../core/plans'
 import type { Background, Backup } from '../../core/types'
 import { Sheet } from '../components/Sheet'
 import { saveJsonFile } from '../../storage/files'
+import { analysisFileName, createAnalysisExport } from '../../core/analysisExport'
 import { useStore } from '../store'
 import { ExerciseForm, groupExercises } from './ExercisePicker'
+import { PlanImportPage } from './PlanImport'
 
-type Page = 'main' | 'exercises'
+type Page = 'main' | 'exercises' | 'import'
 
 const BACKGROUNDS: { value: Background; label: string; sub: string }[] = [
   { value: 'ruhig', label: 'Ganz ruhig', sub: 'Kein Farbschimmer' },
@@ -29,7 +31,7 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
   return (
     <Sheet
       open={open}
-      title={page === 'main' ? 'Einstellungen' : 'Übungen'}
+      title={page === 'main' ? 'Einstellungen' : page === 'import' ? 'Pläne importieren' : 'Übungen'}
       onClose={close}
       leading={
         page !== 'main' && (
@@ -40,12 +42,18 @@ export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () =>
         )
       }
     >
-      {page === 'main' ? <MainPage onExercises={() => setPage('exercises')} /> : <ExercisesPage />}
+      {page === 'main' ? (
+        <MainPage onExercises={() => setPage('exercises')} onImport={() => setPage('import')} />
+      ) : page === 'import' ? (
+        <PlanImportPage />
+      ) : (
+        <ExercisesPage />
+      )}
     </Sheet>
   )
 }
 
-function MainPage({ onExercises }: { onExercises: () => void }) {
+function MainPage({ onExercises, onImport }: { onExercises: () => void; onImport: () => void }) {
   const { data, setBackground, updateSettings } = useStore()
   const visibleCount = data.exercises.filter((e) => !e.hidden).length
 
@@ -122,6 +130,7 @@ function MainPage({ onExercises }: { onExercises: () => void }) {
 
       <LifeDashboardSection />
 
+      <ClaudeSection onImport={onImport} />
       <BackupSection />
 
       <p className="hint center">Athlete Reboot · Version {__APP_VERSION__.replace(/\.0$/, '')}</p>
@@ -240,6 +249,58 @@ function LifeDashboardSection() {
         onChange={(e) => onFile(e.target.files?.[0])}
       />
       {message && <p className={message.kind === 'ok' ? 'ok-text' : 'field-error'}>{message.text}</p>}
+    </section>
+  )
+}
+
+/** Alles mit Claude an einem Ort: Pläne importieren, Auswertungsdatei exportieren (Teilen-Menü → Google Drive), Frage kopieren. */
+function ClaudeSection({ onImport }: { onImport: () => void }) {
+  const { data } = useStore()
+  const [message, setMessage] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const prompt =
+    'Lies in meinem Google Drive die neueste Datei „athlete-reboot-fuer-claude-…json“ und analysiere mein Training: Fortschritt, Bestwerte, Ausdauer, Regelmäßigkeit. Was läuft gut, was sollte ich ändern? Denk an meine Kreuzband-OP.'
+
+  async function doExport() {
+    setMessage(null)
+    const result = await saveJsonFile(analysisFileName(), createAnalysisExport(data, __APP_VERSION__), 'Athlete Reboot für Claude')
+    if (result === 'shared') setMessage('Gespeichert. Jetzt kann Claude die Datei in Google Drive lesen.')
+    if (result === 'downloaded') setMessage('Die Datei wurde heruntergeladen. Lade sie in Google Drive hoch oder direkt in den Claude-Chat.')
+  }
+
+  return (
+    <section className="list-section">
+      <h3 className="list-heading">Claude</h3>
+      <ul className="list inner">
+        <li>
+          <button className="list-row" onClick={onImport}>
+            <span className="row-main accent">Pläne importieren</span>
+            <ChevronRight className="chevron" strokeWidth={2} aria-hidden="true" />
+          </button>
+        </li>
+        <li>
+          <button className="list-row" onClick={doExport}>
+            <span className="row-main accent">Für Claude exportieren</span>
+          </button>
+        </li>
+        <li>
+          <button
+            className="list-row"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(prompt)
+                setCopied(true)
+              } catch {
+                setMessage('Kopieren hat nicht geklappt.')
+              }
+            }}
+          >
+            <span className="row-main accent">{copied ? 'Frage kopiert' : 'Frage an Claude kopieren'}</span>
+          </button>
+        </li>
+      </ul>
+      <p className="hint">Export: Im Teilen-Menü „Drive“ wählen, dann kann Claude die Datei in Google Drive lesen.</p>
+      {message && <p className="hint">{message}</p>}
     </section>
   )
 }

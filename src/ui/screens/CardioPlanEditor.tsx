@@ -3,7 +3,7 @@ import { Minus, Plus, Trash2 } from 'lucide-react'
 import { DragHandle, Sortable } from '../components/Sortable'
 import { HidePlanButton } from './PlansTab'
 import { SPORT_LABEL, SPORTS } from '../../core/cardio'
-import { addBlock, cardioPlanSummary, formatBlock, moveBlockTo, removeBlock, updateBlock } from '../../core/cardioPlan'
+import { addBlock, formatBlock, moveBlockTo, removeBlock, updateBlock } from '../../core/cardioPlan'
 import { formatNumber, parseNumber } from '../../core/workout'
 import type { Amount, CardioBlock, Plan } from '../../core/types'
 import { Segmented } from '../components/Segmented'
@@ -69,11 +69,6 @@ export function CardioPlanEditor({ plan, onClose }: { plan: Plan; onClose: () =>
         + Abschnitt
       </button>
 
-      {blocks.length > 0 && (
-        <p className="hint">
-          {cardioPlanSummary(plan)}. Abschnitte nach Zeit wechseln beim Lauf von selbst, Abschnitte nach Strecke mit „Weiter“.
-        </p>
-      )}
 
       <HidePlanButton plan={plan} onHidden={close} />
 

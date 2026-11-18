@@ -95,10 +95,6 @@ export function WorkoutScreen({ workout }: { workout: Workout }) {
         <button className="button secondary wide" onClick={() => setPicking(true)}>
           + Übung hinzufügen
         </button>
-
-        {workout.exercises.length > 0 && (
-          <p className="hint">Satz nach rechts wischen: Muskelversagen. Nach links wischen: löschen.</p>
-        )}
       </main>
 
       <ExercisePicker
@@ -174,10 +170,7 @@ function ExerciseCard({
           >
             Übung entfernen
           </button>
-          <p className="hint">
-            Tauschen und Verschieben ändert nur das heutige Training, nicht den Plan.
-            {entry.sets.some((s) => s.done) ? ' Erledigte Sätze dieser Übung fallen beim Tauschen weg.' : ''}
-          </p>
+          {entry.sets.some((s) => s.done) && <p className="hint">Erledigte Sätze dieser Übung fallen beim Tauschen weg.</p>}
         </div>
       )}
 

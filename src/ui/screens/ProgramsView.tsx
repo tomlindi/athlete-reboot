@@ -105,7 +105,6 @@ function ProgramCard({ program, onEdit }: { program: Program; onEdit: () => void
           {lighter ? 'Diese Woche leichter: an' : 'Diese Woche leichter'}
         </button>
       )}
-      {lighter && <p className="hint">Weniger Sätze, halb so viele Intervalle und 30 % weniger Umfang. Gut bei Müdigkeit, Schmerzen oder vor einem Spiel.</p>}
     </section>
   )
 }
@@ -253,10 +252,6 @@ function ProgramEditor({ program, onClose }: { program: Program; onClose: () => 
             </label>
           </li>
         </ul>
-        <p className="hint">
-          Das Gewicht steigerst du weiter selbst, sobald ein Training „Ziel geschafft“ zeigt. Leichtere Wochen schaltest du bei Bedarf in der Programmkarte ein.
-          Deine Pläne selbst ändern sich nicht.
-        </p>
       </section>
 
       {confirmDelete ? (

@@ -1,13 +1,17 @@
 // Backup-Datei speichern. Auf dem iPhone öffnet sich das Teilen-Menü
 // („In Dateien sichern“, AirDrop …), sonst wird die Datei heruntergeladen.
 
-export async function saveJsonFile(fileName: string, data: unknown): Promise<'shared' | 'downloaded' | 'cancelled'> {
+export async function saveJsonFile(
+  fileName: string,
+  data: unknown,
+  title = 'Athlete Reboot Backup',
+): Promise<'shared' | 'downloaded' | 'cancelled'> {
   const text = JSON.stringify(data, null, 2)
   const file = new File([text], fileName, { type: 'application/json' })
 
   if (navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: 'Athlete Reboot Backup' })
+      await navigator.share({ files: [file], title })
       return 'shared'
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled'

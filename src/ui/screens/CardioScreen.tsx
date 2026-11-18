@@ -119,7 +119,6 @@ export function CardioScreen({ workout }: { workout: Workout }) {
             {paused ? 'Weiter' : 'Pause'}
           </button>
         </section>
-        <p className="hint">Die Stoppuhr läuft weiter, auch wenn du die App schließt. Strecke, Anstrengung und Puls trägst du beim Beenden ein.</p>
       </main>
 
       <CardioSheet
@@ -173,7 +172,7 @@ function PhaseCard({ workout, now }: { workout: Workout; now: number }) {
           <div style={{ transform: `scaleX(${progress})` }} />
         </div>
       ) : (
-        <p className="hint">Tippe auf „Weiter“, wenn du die Strecke geschafft hast. Seit Beginn: {formatClock(elapsed)}</p>
+        <p className="hint">Seit Beginn {formatClock(elapsed)}</p>
       )}
       <button
         className={`button wide ${timed ? 'secondary' : 'cardio'}`}

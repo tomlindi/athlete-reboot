@@ -191,7 +191,6 @@ function HistoryCalendar({ workouts, onOpen }: { workouts: Workout[]; onOpen: (i
         <li><span className="legend-dot cardio" />Ausdauer</li>
         <li><span className="legend-dot rest" />Rest Day</li>
       </ul>
-      <p className="hint">Tippe auf einen freien Tag, um ihn als Rest Day zu markieren.</p>
     </section>
   )
 }

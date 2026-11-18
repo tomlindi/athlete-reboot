@@ -206,7 +206,6 @@ function ExerciseList({ onOpen }: { onOpen: (id: string) => void }) {
           </li>
         ))}
       </ul>
-      <p className="hint">Bestwert = Satz mit dem höchsten geschätzten Maximum für eine Wiederholung (Epley-Formel), bei Zeit- und Strecken-Übungen die längste Zeit bzw. Strecke.</p>
     </section>
   )
 }
@@ -266,7 +265,6 @@ function ExerciseProgress({ exerciseId, onClose }: { exerciseId: string | null; 
           listLabel="Alle Trainings als Liste"
         />
       )}
-      {points.length > 0 && <p className="hint">Tippe ins Diagramm, um einzelne Trainings zu sehen.</p>}
     </Sheet>
   )
 }

@@ -1,28 +1,14 @@
 import { useRef, useState } from 'react'
-import { ClipboardCopy, Download } from 'lucide-react'
+import { ClipboardCopy } from 'lucide-react'
 import { claudeInstructions, parsePlanImport, PlanImportError, type ImportPreview } from '../../core/planImport'
 import { SPORT_LABEL } from '../../core/cardio'
-import { Sheet } from '../components/Sheet'
 import { useStore } from '../store'
 
-/** Knopf im Pläne-Tab, öffnet das Import-Fenster. */
-export function PlanImportButton() {
-  const [open, setOpen] = useState(false)
-  return (
-    <>
-      <button className="text-button wide" onClick={() => setOpen(true)}>
-        <Download strokeWidth={2} aria-hidden="true" /> Pläne importieren (z. B. von Claude)
-      </button>
-      <PlanImportSheet open={open} onClose={() => setOpen(false)} />
-    </>
-  )
-}
-
 /**
- * Pläne und Programme aus Text oder Datei übernehmen. Erst Vorschau, dann Import.
+ * Pläne und Programme aus Text oder Datei übernehmen (Seite in den Einstellungen). Erst Vorschau, dann Import.
  * Nichts Bestehendes wird überschrieben.
  */
-function PlanImportSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function PlanImportPage() {
   const { data, importPlans } = useStore()
   const [text, setText] = useState('')
   const [preview, setPreview] = useState<ImportPreview | null>(null)
@@ -30,15 +16,6 @@ function PlanImportSheet({ open, onClose }: { open: boolean; onClose: () => void
   const [copied, setCopied] = useState(false)
   const [done, setDone] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
-
-  function close() {
-    setText('')
-    setPreview(null)
-    setError(null)
-    setCopied(false)
-    setDone(null)
-    onClose()
-  }
 
   function check(t: string) {
     setDone(null)
@@ -61,11 +38,14 @@ function PlanImportSheet({ open, onClose }: { open: boolean; onClose: () => void
   }
 
   return (
-    <Sheet open={open} title="Pläne importieren" onClose={close} closeLabel={done ? 'Fertig' : 'Abbrechen'}>
+    <>
       {done ? (
         <section className="card glass">
           <h2 className="card-title">Importiert</h2>
           <p className="card-text">{done}</p>
+          <button className="text-button strong" onClick={() => setDone(null)}>
+            Weitere importieren
+          </button>
         </section>
       ) : (
         <>
@@ -182,6 +162,6 @@ function PlanImportSheet({ open, onClose }: { open: boolean; onClose: () => void
           )}
         </>
       )}
-    </Sheet>
+    </>
   )
 }
