@@ -6,6 +6,7 @@ import { workoutFromPlan } from '../core/plans'
 import { createWorkout, finishWorkout } from '../core/workout'
 import { measureOf } from '../core/measure'
 import { finishCardio, manualCardio, startCardio, type CardioInput } from '../core/cardio'
+import { startCardioPlan } from '../core/cardioPlan'
 import type { Background, Backup, Exercise, Measure, MuscleGroup, Plan, Rating, Settings, Sport, Workout } from '../core/types'
 import * as db from '../storage/db'
 
@@ -124,7 +125,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       startPlan(planId) {
         if (currentActive()) return
         const plan = current().plans.find((p) => p.id === planId)
-        if (plan) putWorkout(workoutFromPlan(plan, current().workouts, Date.now(), (id) => measureOf(exerciseById.get(id))))
+        if (!plan) return
+        if (plan.kind === 'cardio') putWorkout(startCardioPlan(plan))
+        else putWorkout(workoutFromPlan(plan, current().workouts, Date.now(), (id) => measureOf(exerciseById.get(id))))
       },
 
       savePlan(plan) {

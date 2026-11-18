@@ -12,41 +12,75 @@ import {
   REST_OPTIONS,
   updatePlanExercise,
 } from '../../core/plans'
-import type { Measure, Plan, PlanExercise } from '../../core/types'
+import type { Measure, Plan, PlanExercise, PlanKind } from '../../core/types'
+import { cardioPlanSummary, createCardioPlan } from '../../core/cardioPlan'
+import { lastSport } from '../../core/cardio'
+import { Segmented } from '../components/Segmented'
+import { CardioPlanEditor } from './CardioPlanEditor'
 import { MEASURE_LONG, MEASURE_MAX, MEASURE_SHORT, measureOf } from '../../core/measure'
 import { Sheet } from '../components/Sheet'
 import { useStore } from '../store'
 import { ExercisePicker } from './ExercisePicker'
 
 /** Liste der eigenen Pläne mit Start-Knopf. Wird im Tab „Pläne“ und in der Trainings-Startansicht genutzt. */
-export function PlanList({ onEdit, showEmptyHint = true }: { onEdit?: (id: string) => void; showEmptyHint?: boolean }) {
-  const { data, startPlan, active } = useStore()
+/** Umschalter „Gym | Ausdauer“ für Training- und Pläne-Tab. Die Wahl wird gespeichert. */
+export function useTrainingView(): [PlanKind, (v: PlanKind) => void] {
+  const { data, updateSettings } = useStore()
+  return [data.settings.trainingView ?? 'gym', (v) => updateSettings({ trainingView: v })]
+}
 
-  if (data.plans.length === 0) {
+export function TrainingViewSwitch() {
+  const [view, setView] = useTrainingView()
+  return (
+    <Segmented
+      label="Trainingsart"
+      value={view}
+      onChange={setView}
+      options={[
+        { value: 'gym', label: 'Gym' },
+        { value: 'cardio', label: 'Ausdauer' },
+      ]}
+    />
+  )
+}
+
+export const plansOfKind = (plans: Plan[], kind: PlanKind) => plans.filter((p) => (p.kind ?? 'gym') === kind)
+
+export function PlanList({ kind, onEdit, showEmptyHint = true }: { kind: PlanKind; onEdit?: (id: string) => void; showEmptyHint?: boolean }) {
+  const { data, startPlan, active } = useStore()
+  const plans = plansOfKind(data.plans, kind)
+
+  if (plans.length === 0) {
     return showEmptyHint ? (
       <section className="card glass">
         <h2 className="card-title">Noch keine Pläne</h2>
-        <p className="card-text">Lege deinen ersten Plan an, zum Beispiel „Push A“. Pro Übung stellst du Sätze, Wiederholungsbereich und Pause ein.</p>
+        <p className="card-text">
+          {kind === 'cardio'
+            ? 'Lege deinen ersten Ausdauer-Plan an, zum Beispiel „6 × 400 m“: Aufwärmen, Intervalle mit Pausen, Auslaufen.'
+            : 'Lege deinen ersten Plan an, zum Beispiel „Push A“. Pro Übung stellst du Sätze, Wiederholungsbereich und Pause ein.'}
+        </p>
       </section>
     ) : null
   }
 
   return (
     <ul className="list glass">
-      {data.plans.map((p) => (
+      {plans.map((p) => (
         <li key={p.id} className="plan-row">
           <button className="list-row two-line" onClick={() => onEdit?.(p.id)} disabled={!onEdit}>
             <span className="row-main">
               <span className="row-title">{p.name}</span>
               <span className="row-sub">
-                {p.exercises.length} {p.exercises.length === 1 ? 'Übung' : 'Übungen'} · {planSetCount(p)} Sätze
+                {p.kind === 'cardio'
+                  ? cardioPlanSummary(p)
+                  : `${p.exercises.length} ${p.exercises.length === 1 ? 'Übung' : 'Übungen'} · ${planSetCount(p)} Sätze`}
               </span>
             </span>
             {onEdit && <ChevronRight className="chevron" strokeWidth={2} aria-hidden="true" />}
           </button>
           <button
             className="button primary small plan-start"
-            disabled={!!active || p.exercises.length === 0}
+            disabled={!!active || (p.kind === 'cardio' ? !p.blocks?.length : p.exercises.length === 0)}
             onClick={() => startPlan(p.id)}
             aria-label={`${p.name} starten`}
           >
@@ -62,31 +96,39 @@ export function PlansTab() {
   const { data, savePlan } = useStore()
   const [editing, setEditing] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [view] = useTrainingView()
+  const editingPlan = data.plans.find((p) => p.id === editing)
 
   return (
     <>
+      <TrainingViewSwitch />
       <button className="button secondary wide" onClick={() => setCreating(true)}>
-        + Neuer Plan
+        {view === 'cardio' ? '+ Neuer Ausdauer-Plan' : '+ Neuer Plan'}
       </button>
-      <PlanList onEdit={setEditing} />
-      {data.plans.length > 0 && <p className="hint">Tippe auf einen Plan, um ihn zu bearbeiten.</p>}
+      <PlanList kind={view} onEdit={setEditing} />
+      {plansOfKind(data.plans, view).length > 0 && <p className="hint">Tippe auf einen Plan, um ihn zu bearbeiten.</p>}
 
       <NewPlanSheet
         open={creating}
+        kind={view}
         onClose={() => setCreating(false)}
         onCreate={(name) => {
-          const plan = createPlan(name, data.plans.length)
+          const plan = view === 'cardio' ? createCardioPlan(name, lastSport(data.workouts), data.plans.length) : createPlan(name, data.plans.length)
           savePlan(plan)
           setCreating(false)
           setEditing(plan.id)
         }}
       />
-      <PlanEditor planId={editing} onClose={() => setEditing(null)} />
+      {editingPlan?.kind === 'cardio' ? (
+        <CardioPlanEditor plan={editingPlan} onClose={() => setEditing(null)} />
+      ) : (
+        <PlanEditor planId={editing} onClose={() => setEditing(null)} />
+      )}
     </>
   )
 }
 
-function NewPlanSheet({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (name: string) => void }) {
+function NewPlanSheet({ open, kind, onClose, onCreate }: { open: boolean; kind: PlanKind; onClose: () => void; onCreate: (name: string) => void }) {
   const { data } = useStore()
   const [name, setName] = useState('')
   const trimmed = name.trim()
@@ -98,7 +140,7 @@ function NewPlanSheet({ open, onClose, onCreate }: { open: boolean; onClose: () 
   }
 
   return (
-    <Sheet open={open} title="Neuer Plan" onClose={close} closeLabel="Abbrechen">
+    <Sheet open={open} title={kind === 'cardio' ? 'Neuer Ausdauer-Plan' : 'Neuer Plan'} onClose={close} closeLabel="Abbrechen">
       <form
         className="inline-form"
         onSubmit={(e) => {
@@ -110,11 +152,11 @@ function NewPlanSheet({ open, onClose, onCreate }: { open: boolean; onClose: () 
       >
         <label className="field">
           <span>Name</span>
-          <input id="new-plan-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="z. B. Push A" autoFocus />
+          <input id="new-plan-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={kind === 'cardio' ? 'z. B. 6 × 400 m' : 'z. B. Push A'} autoFocus />
         </label>
         {duplicate && <p className="field-error">Einen Plan mit diesem Namen gibt es schon.</p>}
         <button type="submit" className="button primary" disabled={!trimmed || duplicate}>
-          Anlegen und Übungen wählen
+          {kind === 'cardio' ? 'Anlegen und Abschnitte einstellen' : 'Anlegen und Übungen wählen'}
         </button>
       </form>
     </Sheet>

@@ -17,7 +17,8 @@ export function startCardio(sport: Sport, now = Date.now()): Workout {
 
 export function setSport(w: Workout, sport: Sport): Workout {
   if (!w.cardio) return w
-  return { ...w, title: SPORT_LABEL[sport], cardio: { ...w.cardio, sport } }
+  // Plan-Läufe behalten den Plannamen als Titel
+  return { ...w, title: w.planId ? w.title : SPORT_LABEL[sport], cardio: { ...w.cardio, sport } }
 }
 
 export function pauseCardio(w: Workout, now = Date.now()): Workout {
@@ -61,7 +62,8 @@ function cardioData(input: CardioInput): CardioData {
  */
 export function finishCardio(w: Workout, input: CardioInput): Workout {
   const durationSec = Math.max(1, Math.round(input.durationSec))
-  return { ...w, title: SPORT_LABEL[input.sport], endedAt: w.startedAt + durationSec * 1000, cardio: cardioData(input) }
+  const title = w.planId ? w.title : SPORT_LABEL[input.sport]
+  return { ...w, title, endedAt: w.startedAt + durationSec * 1000, cardio: cardioData(input) }
 }
 
 /** Nachträglich eingetragene Einheit, die um `startedAt` begonnen hat. */

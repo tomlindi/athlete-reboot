@@ -101,9 +101,37 @@ export interface PlanExercise extends Target {
   exerciseId: string
 }
 
+/** Menge eines Abschnitts: Zeit in Sekunden oder Strecke in Metern */
+export interface Amount {
+  unit: 'time' | 'distance'
+  value: number
+}
+
+/**
+ * Abschnitt eines Ausdauer-Plans, z. B. „Aufwärmen 10:00“ oder „6 × 400 m schnell, 1:30 Gehpause“.
+ * Mit `repeat` > 1 wird Belastung + Pause wiederholt.
+ */
+export interface CardioBlock {
+  id: string
+  label: string
+  amount: Amount
+  repeat?: number
+  rest?: Amount
+  restLabel?: string
+}
+
+/** Gym-Plan (Übungen) oder Ausdauer-Plan (Abschnitte) */
+export type PlanKind = 'gym' | 'cardio'
+
 export interface Plan {
   id: string
   name: string
+  /** Fehlt = Gym */
+  kind?: PlanKind
+  /** Nur Ausdauer-Plan */
+  sport?: Sport
+  /** Nur Ausdauer-Plan */
+  blocks?: CardioBlock[]
   exercises: PlanExercise[]
   /** Reihenfolge in der Liste */
   order: number
@@ -127,6 +155,22 @@ export interface CardioData {
   pausedMs?: number
   /** Stoppuhr: seit wann gerade pausiert ist */
   pausedAt?: number
+  /** Plan-Lauf: aufgelöste Abschnitte (Kopie beim Start) */
+  phases?: Phase[]
+  /** Plan-Lauf: aktueller Abschnitt; gleich phases.length = Plan geschafft */
+  phaseIndex?: number
+  /** Plan-Lauf: Bewegungszeit in ms, zu der der aktuelle Abschnitt begann */
+  phaseStartMs?: number
+}
+
+/** Ein einzelner Abschnitt beim Plan-Lauf, z. B. „schnell, 400 m, Intervall 3 von 6“ */
+export interface Phase {
+  label: string
+  amount: Amount
+  rest: boolean
+  /** Bei Wiederholungen: Nummer und Anzahl */
+  rep?: number
+  reps?: number
 }
 
 export type Rating = 'good' | 'meh'
@@ -141,7 +185,7 @@ export interface Workout {
   rating?: Rating
   exercises: ExerciseEntry[]
   planId?: string
-  /** Nur bei type = 'cardio'. Bei beendeten Einheiten ist endedAt − startedAt die Bewegungszeit. */
+  /** Nur bei type = 'cardio'. Bei beendeten Einheiten ist endedAt − startedAt die Bewegungszeit. Plan-Läufe tragen `planId`. */
   cardio?: CardioData
   /** Laufende Pause. Gespeichert als Endzeitpunkt, damit sie App-Wechsel und Neustart übersteht. */
   rest?: RestTimer
@@ -173,6 +217,8 @@ export type Background = 'ruhig' | 'blau-lila' | 'logo' | 'hauch'
 
 export interface Settings {
   background: Background
+  /** Zuletzt gewählte Seite im Training- und Pläne-Tab */
+  trainingView?: PlanKind
   /** Pause nach einem Satz, wenn die Übung keine Plan-Vorgabe hat */
   defaultRestSec: number
   /** Kurzer Ton, wenn die Pause vorbei ist */

@@ -2,7 +2,7 @@ import { ChevronRight } from 'lucide-react'
 import { formatDuration } from '../../core/dates'
 import { summarize } from '../../core/workout'
 import { useStore } from '../store'
-import { PlanList } from './PlansTab'
+import { PlanList, plansOfKind, TrainingViewSwitch, useTrainingView } from './PlansTab'
 import { CardioCard } from './CardioScreen'
 import { cardioSummary } from '../../core/cardio'
 
@@ -11,16 +11,18 @@ const dayFmt = new Intl.DateTimeFormat('de-DE', { weekday: 'long', day: 'numeric
 /** Startansicht, wenn kein Training läuft. */
 export function TrainingStart({ onOpenHistory, onOpenPlans }: { onOpenHistory: () => void; onOpenPlans: () => void }) {
   const { data, startWorkout } = useStore()
+  const [view] = useTrainingView()
   const last = data.workouts
-    .filter((w) => w.endedAt !== undefined)
+    .filter((w) => w.endedAt !== undefined && (w.type === 'cardio') === (view === 'cardio'))
     .sort((a, b) => b.startedAt - a.startedAt)[0]
 
   return (
     <>
+      <TrainingViewSwitch />
       <section className="list-section">
         <h3 className="list-heading">Meine Pläne</h3>
-        {data.plans.length > 0 ? (
-          <PlanList showEmptyHint={false} />
+        {plansOfKind(data.plans, view).length > 0 ? (
+          <PlanList kind={view} showEmptyHint={false} />
         ) : (
           <section className="card glass">
             <p className="card-text">Noch keine Pläne. Lege im Tab „Pläne“ deinen ersten an, dann startest du ihn hier mit einem Tipp.</p>
@@ -31,15 +33,17 @@ export function TrainingStart({ onOpenHistory, onOpenPlans }: { onOpenHistory: (
         )}
       </section>
 
-      <button className="button secondary wide" onClick={startWorkout}>
-        Freies Training starten
-      </button>
-
-      <CardioCard />
+      {view === 'gym' ? (
+        <button className="button secondary wide" onClick={startWorkout}>
+          Freies Training starten
+        </button>
+      ) : (
+        <CardioCard />
+      )}
 
       {last && (
         <section className="list-section">
-          <h3 className="list-heading">Letztes Training</h3>
+          <h3 className="list-heading">{view === 'cardio' ? 'Letzte Einheit' : 'Letztes Training'}</h3>
           <ul className="list glass">
             <li>
               <button className="list-row two-line" onClick={onOpenHistory}>

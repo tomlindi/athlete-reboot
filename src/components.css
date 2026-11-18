@@ -1558,7 +1558,8 @@ body.sheet-open {
 /* ---------- Ausdauer (Laufen, Rad, Schwimmen) in Türkis ---------- */
 
 .cardio-card .button svg,
-.cardio-stopwatch .button svg {
+.cardio-stopwatch .button svg,
+.phase-card .button svg {
   width: 18px;
   height: 18px;
   margin-right: 6px;
@@ -1651,4 +1652,124 @@ body.sheet-open {
   background: color-mix(in srgb, var(--cyan) 22%, transparent);
   color: var(--cyan-text);
   font-weight: 700;
+}
+
+/* ---------- Ausdauer-Plan: Abschnitte im Lauf ---------- */
+
+.cardio-time.small {
+  font-size: 34px;
+  margin-top: 0;
+}
+
+.phase-card {
+  gap: 8px;
+  text-align: center;
+}
+
+.phase-step {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.phase-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.phase-value {
+  margin: 4px 0;
+  font-size: 64px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--cyan-text);
+}
+
+/* Pausen-Abschnitte im Pausen-Orange, wie im Gym */
+.phase-card.rest .phase-value {
+  color: var(--orange-text);
+}
+
+.phase-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--inner);
+  overflow: hidden;
+}
+
+.phase-bar div {
+  height: 100%;
+  background: var(--cyan);
+  transform-origin: left center;
+  transition: transform 0.25s linear;
+}
+
+.phase-card.rest .phase-bar div {
+  background: var(--orange);
+}
+
+.phase-next {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+.phase-card.done .card-title {
+  color: var(--cyan-text);
+}
+
+/* Plan-Editor: Abschnitt */
+.block-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.block-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.block-field.wide {
+  grid-column: 1 / -1;
+}
+
+.block-text {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: none;
+  background: var(--field);
+  font: inherit;
+  font-size: 17px;
+  color: var(--text);
+}
+
+.amount-inputs {
+  display: flex;
+  gap: 6px;
+}
+
+.amount-inputs .rep-input {
+  width: 72px;
+  flex: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phase-bar div {
+    transition: none;
+  }
+}
+
+.phase-bar {
+  margin: 4px 0 8px;
+}
+
+.phase-card .button {
+  margin-top: 4px;
 }

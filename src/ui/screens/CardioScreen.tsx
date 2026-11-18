@@ -1,5 +1,15 @@
 import { useEffect, useState } from 'react'
-import { Pause, Play, Plus } from 'lucide-react'
+import { Pause, Play, Plus, SkipForward } from 'lucide-react'
+import {
+  advanceTimedPhases,
+  completedDistanceM,
+  currentPhase,
+  formatAmount,
+  nextPhase,
+  phaseElapsedMs,
+  planDone,
+} from '../../core/cardioPlan'
+import { playRestEnd, unlockSound } from '../sound'
 import {
   elapsedMs,
   formatPace,
@@ -13,7 +23,7 @@ import {
 } from '../../core/cardio'
 import { dateKey, formatClock } from '../../core/dates'
 import { parseNumber } from '../../core/workout'
-import type { Sport, Workout } from '../../core/types'
+import type { Phase, Sport, Workout } from '../../core/types'
 import { Segmented } from '../components/Segmented'
 import { Sheet } from '../components/Sheet'
 import { useStore } from '../store'
@@ -59,16 +69,27 @@ export function CardioScreen({ workout }: { workout: Workout }) {
   const [finishing, setFinishing] = useState(false)
   // Wer beim Beenden-Fenster „Zurück“ tippt, soll so weitermachen wie vorher (laufend oder pausiert)
   const [resumeOnBack, setResumeOnBack] = useState(false)
-  const now = useNow(500)
+  const { data } = useStore()
+  const now = useNow(250)
   const paused = workout.cardio?.pausedAt !== undefined
   const ms = elapsedMs(workout, now)
   const sport = workout.cardio?.sport ?? 'laufen'
+  const hasPlan = !!workout.cardio?.phases
+
+  // Plan-Lauf: abgelaufene Zeit-Abschnitte weiterschalten, mit Ton (nur bei offener App)
+  useEffect(() => {
+    if (!hasPlan || paused) return
+    const { changes } = advanceTimedPhases(workout, now)
+    if (changes === 0) return
+    if (data.settings.restSound && document.visibilityState === 'visible') playRestEnd()
+    updateActive((w) => advanceTimedPhases(w).workout)
+  }, [now, hasPlan, paused, workout, data.settings.restSound, updateActive])
 
   return (
     <>
       <header className="workout-head glass">
         <div className="workout-head-text">
-          <h1 className="workout-title">{SPORT_LABEL[sport]}</h1>
+          <h1 className="workout-title">{hasPlan ? workout.title : SPORT_LABEL[sport]}</h1>
           <p className="workout-clock">{paused ? 'Pausiert' : 'Läuft'}</p>
         </div>
         <button
@@ -85,8 +106,9 @@ export function CardioScreen({ workout }: { workout: Workout }) {
 
       <main className="screen workout-body">
         <Segmented label="Sportart" value={sport} onChange={(s) => updateActive((w) => setSport(w, s))} options={SPORT_OPTIONS} />
+        {hasPlan && <PhaseCard workout={workout} now={now} />}
         <section className="card glass cardio-stopwatch">
-          <p className={`cardio-time ${paused ? 'paused' : ''}`} role="timer" aria-live="off">
+          <p className={`cardio-time ${hasPlan ? 'small' : ''} ${paused ? 'paused' : ''}`} role="timer" aria-live="off">
             {formatClock(ms)}
           </p>
           <button
@@ -102,7 +124,7 @@ export function CardioScreen({ workout }: { workout: Workout }) {
 
       <CardioSheet
         open={finishing}
-        finishing={{ sport, durationSec: Math.round(ms / 1000) }}
+        finishing={{ sport, durationSec: Math.round(ms / 1000), distanceM: completedDistanceM(workout) }}
         onClose={() => {
           if (resumeOnBack) updateActive((w) => resumeCardio(w))
           setFinishing(false)
@@ -110,6 +132,61 @@ export function CardioScreen({ workout }: { workout: Workout }) {
         onDone={() => setFinishing(false)}
       />
     </>
+  )
+}
+
+const phaseTitle = (p: Phase) => (p.reps ? `${p.rest ? 'Pause' : 'Intervall'} ${p.rep} von ${p.reps} · ${p.label}` : p.label)
+
+/** Aktueller Abschnitt eines Plan-Laufs: Restzeit bzw. Strecke, „Weiter“ und was als Nächstes kommt. */
+function PhaseCard({ workout, now }: { workout: Workout; now: number }) {
+  const { updateActive } = useStore()
+  const phase = currentPhase(workout)
+  const phases = workout.cardio?.phases ?? []
+  const index = workout.cardio?.phaseIndex ?? 0
+  const upcoming = phases[index + 1]
+
+  if (planDone(workout) || !phase) {
+    return (
+      <section className="card glass phase-card done">
+        <h2 className="card-title">Plan geschafft</h2>
+        <p className="card-text">Alle {phases.length} Abschnitte erledigt. Die Stoppuhr läuft weiter, bis du beendest.</p>
+      </section>
+    )
+  }
+
+  const timed = phase.amount.unit === 'time'
+  const elapsed = phaseElapsedMs(workout, now)
+  const leftSec = timed ? Math.max(0, Math.ceil(phase.amount.value - elapsed / 1000)) : 0
+  const progress = timed ? Math.min(1, elapsed / (phase.amount.value * 1000)) : 0
+
+  return (
+    <section className={`card glass phase-card ${phase.rest ? 'rest' : ''}`}>
+      <p className="phase-step">
+        Abschnitt {index + 1} von {phases.length}
+      </p>
+      <h2 className="phase-title">{phaseTitle(phase)}</h2>
+      <p className="phase-value" role="timer" aria-live="off">
+        {timed ? formatAmount({ unit: 'time', value: leftSec }) : formatAmount(phase.amount)}
+      </p>
+      {timed ? (
+        <div className="phase-bar" aria-hidden="true">
+          <div style={{ transform: `scaleX(${progress})` }} />
+        </div>
+      ) : (
+        <p className="hint">Tippe auf „Weiter“, wenn du die Strecke geschafft hast. Seit Beginn: {formatClock(elapsed)}</p>
+      )}
+      <button
+        className={`button wide ${timed ? 'secondary' : 'cardio'}`}
+        onClick={() => {
+          unlockSound()
+          updateActive((w) => nextPhase(w))
+        }}
+      >
+        <SkipForward strokeWidth={2.4} aria-hidden="true" />
+        {timed ? 'Überspringen' : 'Weiter'}
+      </button>
+      <p className="phase-next">{upcoming ? `Danach: ${upcoming.label} ${formatAmount(upcoming.amount)}` : 'Danach: geschafft'}</p>
+    </section>
   )
 }
 
@@ -124,7 +201,7 @@ function CardioSheet({
   onDone,
 }: {
   open: boolean
-  finishing?: { sport: Sport; durationSec: number }
+  finishing?: { sport: Sport; durationSec: number; distanceM?: number }
   onClose: () => void
   onDone?: () => void
 }) {
@@ -145,7 +222,9 @@ function CardioSheet({
     setDate(dateKey(new Date()))
     setMin(finishing ? String(Math.floor(finishing.durationSec / 60)) : '')
     setSec(finishing ? String(finishing.durationSec % 60) : '')
-    setDist('')
+    const sportNow = finishing?.sport ?? lastSport(data.workouts)
+    const m = finishing?.distanceM
+    setDist(m ? (sportNow === 'schwimmen' ? String(m) : String(m / 1000).replace('.', ',')) : '')
     setRpe(null)
     setHr('')
     setConfirmDiscard(false)
