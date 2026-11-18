@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { dateKey, formatDuration, monthGrid, startOfWeek, weekLabel } from '../../core/dates'
 import { formatNumber, formatSet, summarize } from '../../core/workout'
 import { entryMeasure } from '../../core/measure'
+import { cardioSummary, durationSec, formatDistance, formatPace } from '../../core/cardio'
 import type { Workout } from '../../core/types'
 import { Segmented } from '../components/Segmented'
 import { Sheet } from '../components/Sheet'
@@ -77,11 +78,14 @@ function HistoryList({ workouts, onOpen }: { workouts: Workout[]; onOpen: (id: s
               return (
                 <li key={w.id}>
                   <button className="list-row two-line" onClick={() => onOpen(w.id)}>
-                    <span className={`rating-dot ${w.rating ?? ''}`} aria-label={w.rating === 'good' ? 'Gut' : w.rating === 'meh' ? 'Nicht so gut' : undefined} />
+                    <span
+                      className={`rating-dot ${w.type === 'cardio' ? 'cardio' : (w.rating ?? '')}`}
+                      aria-label={w.type === 'cardio' ? 'Ausdauer' : w.rating === 'good' ? 'Gut' : w.rating === 'meh' ? 'Nicht so gut' : undefined}
+                    />
                     <span className="row-main">
                       <span className="row-title">{w.title}</span>
                       <span className="row-sub">
-                        {formatDuration((w.endedAt ?? w.startedAt) - w.startedAt)} · {s.sets} Sätze
+                        {w.type === 'cardio' ? cardioSummary(w, formatDuration) : `${formatDuration((w.endedAt ?? w.startedAt) - w.startedAt)} · ${s.sets} Sätze`}
                       </span>
                     </span>
                     <span className="row-meta">{dayFmt.format(w.startedAt)}</span>
@@ -147,7 +151,9 @@ function HistoryCalendar({ workouts, onOpen }: { workouts: Workout[]; onOpen: (i
               ? 'good'
               : dayWorkouts.some((w) => w.rating === 'meh')
                 ? 'meh'
-                : 'done'
+                : dayWorkouts.every((w) => w.type === 'cardio')
+                  ? 'cardio'
+                  : 'done'
             : isRest
               ? 'rest'
               : ''
@@ -156,7 +162,9 @@ function HistoryCalendar({ workouts, onOpen }: { workouts: Workout[]; onOpen: (i
               ? 'gutes Training'
               : status === 'meh'
                 ? 'nicht so gutes Training'
-                : status === 'done'
+                : status === 'cardio'
+                  ? 'Ausdauer'
+                  : status === 'done'
                   ? 'Training ohne Bewertung'
                   : status === 'rest'
                   ? 'Rest Day'
@@ -180,6 +188,7 @@ function HistoryCalendar({ workouts, onOpen }: { workouts: Workout[]; onOpen: (i
       <ul className="legend">
         <li><span className="legend-dot good" />Gut</li>
         <li><span className="legend-dot meh" />Nicht so gut</li>
+        <li><span className="legend-dot cardio" />Ausdauer</li>
         <li><span className="legend-dot rest" />Rest Day</li>
       </ul>
       <p className="hint">Tippe auf einen freien Tag, um ihn als Rest Day zu markieren.</p>
@@ -202,11 +211,25 @@ function WorkoutDetail({ workout, onClose }: { workout: Workout | undefined; onC
   return (
     <Sheet open title={workout.title} onClose={close}>
       <p className="sheet-sub">{longFmt.format(workout.startedAt)}</p>
-      <div className="stat-row">
-        <Stat value={formatDuration((workout.endedAt ?? workout.startedAt) - workout.startedAt)} label="Dauer" />
-        <Stat value={String(s.sets)} label="Sätze" />
-        <Stat value={`${formatNumber(Math.round(s.volume))} kg`} label="Volumen" />
-      </div>
+      {workout.type === 'cardio' && workout.cardio ? (
+        <>
+          <div className="stat-row">
+            <Stat value={formatDuration(durationSec(workout) * 1000)} label="Dauer" />
+            <Stat value={workout.cardio.distanceM ? formatDistance(workout.cardio.sport, workout.cardio.distanceM) : '–'} label="Distanz" />
+            <Stat value={formatPace(workout.cardio.sport, durationSec(workout), workout.cardio.distanceM) ?? '–'} label="Tempo" />
+          </div>
+          <div className="stat-row compact">
+            <Stat value={workout.cardio.rpe ? `${workout.cardio.rpe} / 10` : '–'} label="Anstrengung" />
+            <Stat value={workout.cardio.avgHr ? `${workout.cardio.avgHr} bpm` : '–'} label="Puls Ø" />
+          </div>
+        </>
+      ) : (
+        <div className="stat-row">
+          <Stat value={formatDuration((workout.endedAt ?? workout.startedAt) - workout.startedAt)} label="Dauer" />
+          <Stat value={String(s.sets)} label="Sätze" />
+          <Stat value={`${formatNumber(Math.round(s.volume))} kg`} label="Volumen" />
+        </div>
+      )}
       {workout.rating && (
         <p className={`rating-badge ${workout.rating}`}>{workout.rating === 'good' ? 'Gutes Training' : 'Nicht so gutes Training'}</p>
       )}

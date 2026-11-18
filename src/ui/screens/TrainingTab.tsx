@@ -3,6 +3,8 @@ import { formatDuration } from '../../core/dates'
 import { summarize } from '../../core/workout'
 import { useStore } from '../store'
 import { PlanList } from './PlansTab'
+import { CardioCard } from './CardioScreen'
+import { cardioSummary } from '../../core/cardio'
 
 const dayFmt = new Intl.DateTimeFormat('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })
 
@@ -33,18 +35,22 @@ export function TrainingStart({ onOpenHistory, onOpenPlans }: { onOpenHistory: (
         Freies Training starten
       </button>
 
+      <CardioCard />
+
       {last && (
         <section className="list-section">
           <h3 className="list-heading">Letztes Training</h3>
           <ul className="list glass">
             <li>
               <button className="list-row two-line" onClick={onOpenHistory}>
-                <span className={`rating-dot ${last.rating ?? ''}`} aria-hidden="true" />
+                <span className={`rating-dot ${last.type === 'cardio' ? 'cardio' : (last.rating ?? '')}`} aria-hidden="true" />
                 <span className="row-main">
                   <span className="row-title">{last.title}</span>
                   <span className="row-sub">
-                    {dayFmt.format(last.startedAt)} · {formatDuration((last.endedAt ?? last.startedAt) - last.startedAt)} ·{' '}
-                    {summarize(last).sets} Sätze
+                    {dayFmt.format(last.startedAt)} ·{' '}
+                    {last.type === 'cardio'
+                      ? cardioSummary(last, formatDuration)
+                      : `${formatDuration((last.endedAt ?? last.startedAt) - last.startedAt)} · ${summarize(last).sets} Sätze`}
                   </span>
                 </span>
                 <ChevronRight className="chevron" strokeWidth={2} aria-hidden="true" />

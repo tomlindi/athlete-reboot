@@ -5,7 +5,8 @@ import { mergeLifeDashboard, parseLifeDashboardExport, type ImportResult } from 
 import { workoutFromPlan } from '../core/plans'
 import { createWorkout, finishWorkout } from '../core/workout'
 import { measureOf } from '../core/measure'
-import type { Background, Backup, Exercise, Measure, MuscleGroup, Plan, Rating, Settings, Workout } from '../core/types'
+import { finishCardio, manualCardio, startCardio, type CardioInput } from '../core/cardio'
+import type { Background, Backup, Exercise, Measure, MuscleGroup, Plan, Rating, Settings, Sport, Workout } from '../core/types'
 import * as db from '../storage/db'
 
 // Zentraler Zustand der App. Jede Änderung wird sofort auf dem Gerät gespeichert,
@@ -18,6 +19,9 @@ interface Store {
   notice: string | null
   dismissNotice: () => void
   startWorkout: () => void
+  startCardio: (sport: Sport) => void
+  finishCardio: (input: CardioInput) => void
+  addCardio: (input: CardioInput, startedAt: number) => void
   startPlan: (planId: string) => void
   savePlan: (plan: Plan) => void
   deletePlan: (id: string) => void
@@ -101,6 +105,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       startWorkout() {
         if (currentActive()) return
         putWorkout(createWorkout())
+      },
+
+      startCardio(sport) {
+        if (currentActive()) return
+        putWorkout(startCardio(sport))
+      },
+
+      finishCardio(input) {
+        const a = currentActive()
+        if (a?.type === 'cardio') putWorkout(finishCardio(a, input))
+      },
+
+      addCardio(input, startedAt) {
+        putWorkout(manualCardio(input, startedAt))
       },
 
       startPlan(planId) {

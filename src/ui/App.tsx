@@ -6,6 +6,7 @@ import { ProgressTab } from './screens/ProgressTab'
 import { SettingsSheet } from './screens/SettingsSheet'
 import { TrainingStart } from './screens/TrainingTab'
 import { WorkoutScreen } from './screens/WorkoutScreen'
+import { CardioScreen } from './screens/CardioScreen'
 import { StoreProvider, useStore } from './store'
 import { playRestEnd } from './sound'
 import { finishHold, stopRest } from '../core/workout'
@@ -127,7 +128,7 @@ function Shell() {
       )}
 
       {showWorkout ? (
-        <WorkoutScreen workout={active} />
+        active.type === 'cardio' ? <CardioScreen workout={active} /> : <WorkoutScreen workout={active} />
       ) : (
         <main className="screen">
           <header className="screen-header">

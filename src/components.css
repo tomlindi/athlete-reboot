@@ -10,6 +10,7 @@
   --orange-text: color-mix(in srgb, var(--orange), var(--text-mix));
   --red-text: color-mix(in srgb, var(--red), var(--text-mix));
   --indigo-text: color-mix(in srgb, var(--indigo), var(--text-mix));
+  --cyan-text: color-mix(in srgb, var(--cyan), var(--text-mix));
   --sheet: rgba(250, 250, 252, 0.9);
   --field: #ffffff;
   --row-solid: #fafafc;
@@ -1552,4 +1553,102 @@ body.sheet-open {
 
 .level-bars span.on {
   background: var(--accent);
+}
+
+/* ---------- Ausdauer (Laufen, Rad, Schwimmen) in Türkis ---------- */
+
+.cardio-card .button svg,
+.cardio-stopwatch .button svg {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  flex: none;
+}
+
+/* Türkis-Fläche mit sehr dunkler Schrift: in Hell und Dunkel gut lesbar */
+.button.cardio {
+  background: var(--cyan);
+  color: #001b24;
+}
+
+.cardio-card .card-title {
+  color: var(--cyan-text);
+}
+
+.cardio-card .form-actions {
+  justify-content: flex-start;
+  margin-top: 8px;
+}
+
+.cardio-stopwatch {
+  align-items: center;
+  gap: 16px;
+}
+
+.cardio-time {
+  margin: 8px 0 0;
+  font-size: 64px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--cyan-text);
+}
+
+.cardio-time.paused {
+  color: var(--text-secondary);
+}
+
+.cardio-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cardio-inputs input {
+  width: 84px;
+  flex: none;
+  text-align: center;
+}
+
+.unit {
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+.cardio-pace {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--cyan-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.rpe-row {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+}
+
+.rpe {
+  min-height: 44px;
+  border-radius: 12px;
+  background: var(--inner);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.rpe.on {
+  background: var(--cyan);
+  color: #001b24;
+}
+
+.rating-dot.cardio,
+.legend-dot.cardio {
+  background: var(--cyan);
+}
+
+.calendar-day.cardio {
+  background: color-mix(in srgb, var(--cyan) 22%, transparent);
+  color: var(--cyan-text);
+  font-weight: 700;
 }

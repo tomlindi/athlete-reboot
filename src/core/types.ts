@@ -109,8 +109,25 @@ export interface Plan {
   order: number
 }
 
-/** Trainingsart. Später kommen Ausdauer-Einheiten (Laufen, Rad, Handball) dazu. */
-export type WorkoutType = 'gym'
+/** Trainingsart: Gym (Sätze) oder Ausdauer (Dauer, Distanz). */
+export type WorkoutType = 'gym' | 'cardio'
+
+export type Sport = 'laufen' | 'rad' | 'schwimmen'
+
+/** Daten einer Ausdauer-Einheit */
+export interface CardioData {
+  sport: Sport
+  /** Strecke in Metern (auch bei Laufen und Rad, Anzeige dort in km) */
+  distanceM?: number
+  /** Anstrengung 1–10 (RPE) */
+  rpe?: number
+  /** Durchschnittspuls in Schlägen pro Minute */
+  avgHr?: number
+  /** Stoppuhr: Summe aller Pausen in ms */
+  pausedMs?: number
+  /** Stoppuhr: seit wann gerade pausiert ist */
+  pausedAt?: number
+}
 
 export type Rating = 'good' | 'meh'
 
@@ -124,6 +141,8 @@ export interface Workout {
   rating?: Rating
   exercises: ExerciseEntry[]
   planId?: string
+  /** Nur bei type = 'cardio'. Bei beendeten Einheiten ist endedAt − startedAt die Bewegungszeit. */
+  cardio?: CardioData
   /** Laufende Pause. Gespeichert als Endzeitpunkt, damit sie App-Wechsel und Neustart übersteht. */
   rest?: RestTimer
   /** Laufender Countdown einer Zeit-Übung */

@@ -13,6 +13,7 @@ import {
 } from '../../core/progress'
 import { formatNumber, formatSet } from '../../core/workout'
 import type { Measure } from '../../core/types'
+import { cardioWeek, formatDistance, SPORT_LABEL } from '../../core/cardio'
 import { LineChart } from '../components/LineChart'
 import { Segmented } from '../components/Segmented'
 import { Sheet } from '../components/Sheet'
@@ -42,6 +43,7 @@ export function ProgressTab() {
   return (
     <>
       <WeekCard />
+      <CardioWeekCard />
       <StrengthCard />
       <ExerciseList onOpen={setOpenId} />
       <ExerciseProgress exerciseId={openId} onClose={() => setOpenId(null)} />
@@ -67,6 +69,33 @@ function WeekCard() {
         />
       </div>
       <p className="hint">Verglichen mit der ganzen Vorwoche.</p>
+    </section>
+  )
+}
+
+/** Ausdauer dieser Woche pro Sportart. Erscheint erst, wenn es Einheiten gibt. */
+function CardioWeekCard() {
+  const { data } = useStore()
+  const rows = useMemo(() => cardioWeek(data.workouts), [data.workouts])
+  if (rows.length === 0) return null
+
+  return (
+    <section className="list-section">
+      <h3 className="list-heading">Ausdauer diese Woche</h3>
+      <ul className="list glass">
+        {rows.map((r) => (
+          <li key={r.sport} className="list-row static two-line">
+            <span className="rating-dot cardio" aria-hidden="true" />
+            <span className="row-main">
+              <span className="row-title">{SPORT_LABEL[r.sport]}</span>
+              <span className="row-sub">
+                {r.sessions} {r.sessions === 1 ? 'Einheit' : 'Einheiten'} · {Math.round(r.minutes)} min
+              </span>
+            </span>
+            <span className="best-value">{r.distanceM > 0 ? formatDistance(r.sport, r.distanceM) : '–'}</span>
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }
